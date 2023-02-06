@@ -1,6 +1,7 @@
 Đầu tiên e sử dụng ida thì thấy có dòng if như hình 
 
 ![image](https://user-images.githubusercontent.com/111769169/217061789-be75c449-b683-4163-832f-76cd1bb22527.png)
+
 Em kiểm tra trên mạng thì đại loại lệnh strcmp() sẽ so sánh 2 chuỗi đầu vào, nếu giống nhau (bằng nhau) thì lệnh trả về giá trị 0, còn lại sẽ là khác 0
 => Em hiểu nếu em trả lời là no thì sẽ exit luôn
 
