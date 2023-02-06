@@ -15,7 +15,7 @@ Em chú ý thêm đoạn sau:
 
 ![image](https://user-images.githubusercontent.com/111769169/217063283-8ad0ba43-a285-49bb-b45b-f6ad3819f34d.png)
 
-Em hiểu đoạn system nó chỉ ls /bin/ls chứ không như bình thường là /bin/sh để chiếm shell
+Em hiểu đoạn system nó chỉ ls (ls) chứ không như bình thường là /bin/sh để chiếm shell
 
 Đến đây e nghĩ mình sẽ overflow đến biến command và đổi giá trị /bin/sh
 
