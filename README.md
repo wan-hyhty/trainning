@@ -1,0 +1,2 @@
+# trainning
+trainning pưn
