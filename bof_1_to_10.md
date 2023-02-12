@@ -42,3 +42,23 @@ code: *[bof3.py](https://github.com/wan-hyhty/trainning/blob/task-1/bof3.py)*
 script:  
 ![image](https://user-images.githubusercontent.com/111769169/218329754-7ea621f1-e247-4a90-8ef3-c02c00b259f7.png)  
 code: [bof3.2.py](https://github.com/wan-hyhty/trainning/blob/task-1/bof3.2.py)  
+   
+   
+   
+# ROPgadget  
+Mục đích: thực hiện hàm execve("/bin/sh", 0, 0)  
+   
+đầu tiên ta dùng ROPgadget --binary <tên file>
+ta sẽ tìm pop rdi (arg[1]), pop rsi (arg[2]), pop rdx (arg[3]), rax  
+   
+Trước hết ta sẽ kiểm tra chuỗi /bin/sh có sẵn ch, nếu có chuyển sang bước tiếp theo  
+Nếu không ta phải truyền chuỗi /bin/sh vào bằng cách gọi hàm gets nhưng tham số lưu chuỗi nhập vào ở địa chỉ trống cố định trước đó.  
+![image](https://user-images.githubusercontent.com/111769169/218334543-04f98a5b-25ad-4988-9193-41552663902b.png)  
+   
+Sau đó, thực thi hàm execve, do hàm execve có 3 tham số nên ta sẽ setup thanh rdi, rsi, rdx, và rax = 0x3b  
+   
+![image](https://user-images.githubusercontent.com/111769169/218334648-7b13bd5e-6288-4c44-89c5-8345294b5f59.png)  
+
+
+
+
