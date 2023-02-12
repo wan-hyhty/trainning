@@ -55,7 +55,7 @@ Trước hết ta sẽ kiểm tra chuỗi /bin/sh có sẵn ch, nếu có chuy�
 Nếu không ta phải truyền chuỗi /bin/sh vào bằng cách gọi hàm gets nhưng tham số lưu chuỗi nhập vào ở địa chỉ trống cố định trước đó.  
 ![image](https://user-images.githubusercontent.com/111769169/218334543-04f98a5b-25ad-4988-9193-41552663902b.png)  
    
-Sau đó, thực thi hàm execve, do hàm execve có 3 tham số nên ta sẽ setup thanh rdi, rsi, rdx, và rax = 0x3b  
+Sau đó, thực thi hàm execve, do hàm execve có 3 tham số nên ta sẽ setup thanh rdi (truyền địa chỉ con trỏ lưu chuỗi), rsi, rdx, và rax = 0x3b  
    
 ![image](https://user-images.githubusercontent.com/111769169/218334648-7b13bd5e-6288-4c44-89c5-8345294b5f59.png)  
 
