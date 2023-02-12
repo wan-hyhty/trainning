@@ -19,3 +19,26 @@ Em tìm offset các biến a, b, c
 Cuối cùng, 
 ![image](https://user-images.githubusercontent.com/111769169/218327686-2d459d1b-817e-4a0c-9e52-42edd6b8b23f.png)  
 code: [bof2.py](https://github.com/wan-hyhty/trainning/blob/task-1/bof2.py)  
+  
+  
+# Ret2win
+![image](https://user-images.githubusercontent.com/111769169/218328023-c8bb1666-93c8-466f-8e19-ade44d943f29.png)  
+Nhiệm vụ là thay đổi địa chỉ thanh rip đang trỏ đến.  
+  
+file: [bof3](https://github.com/wan-hyhty/trainning/blob/task-1/bof3)  
+Mục tiêu là BOF đến thanh rip sau đó truyền địa chỉ hàm win  
+Lưu ý khi truyền địa chỉ win tránh nhảy vào đầu hàm có thể gây lỗi  
+Em tìm offset của rip = 40, tiếp theo ta sẽ truyền địa chỉ hàm win  
+Đến đây ta có 2 trường hợp, 1 là địa chỉ tĩnh và 2 là trường hợp địa chỉ động  
+### TH 1: địa chỉ tĩnh  
+ta tìm địa chỉ hàm win bằng cách print địa chỉ win  
+![image](https://user-images.githubusercontent.com/111769169/218329010-433f6602-a022-43e2-95f4-76d2a83eabc7.png)  
+tiếp đến viết script  
+![image](https://user-images.githubusercontent.com/111769169/218329482-19c4caf8-c760-4297-8cac-2413a2c5bde0.png)  
+***Lưu ý*** nên tránh việc nhảy vào đầu hàm sẽ gây ra lỗi xmm1...(stack không chia hết cho 16), tốt nhất nên nhảy vào địa chỉ sau lệnh push đầu hàm  
+code: *[bof3.py](https://github.com/wan-hyhty/trainning/blob/task-1/bof3.py)*
+#
+### TH2: địa chỉ động
+script:  
+![image](https://user-images.githubusercontent.com/111769169/218329754-7ea621f1-e247-4a90-8ef3-c02c00b259f7.png)  
+code: [bof3.2.py](https://github.com/wan-hyhty/trainning/blob/task-1/bof3.2.py)  
