@@ -64,4 +64,14 @@ Sau đó, thực thi hàm execve, do hàm execve có 3 tham số nên ta sẽ se
 code: [bof4.py](https://github.com/wan-hyhty/trainning/blob/task-1/bof4.py)
    
    
-# Ret2shellcode  
+# Ret2shellcode không leak
+file: [bof5](https://github.com/wan-hyhty/trainning/blob/task-1/bof5)  
+khi NX tắt ta có thể thực thi stack
+Nhiệm vụ: đưa shellcode vào trong stack, dùng thanh ghi để thực hiện shell (call hoặc jmp)  
+![image](https://user-images.githubusercontent.com/111769169/218352948-b9f78154-8136-4dad-8d37-587ff5df3645.png)  
+shellcode có thể tìm trên mạng tuỳ theo file 64 hay 32bit, hoặc có thể dùng asm  
+tiếp đến ta sẽ BOF đến địa chỉ saved rip và truyền địa chỉ call_rax để chương trình nhảy vào rax và thực thi shell  
+script: [bof5.py](https://github.com/wan-hyhty/trainning/blob/task-1/bof5.py)  
+
+
+
