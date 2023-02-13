@@ -78,3 +78,26 @@ script: [bof5.py](https://github.com/wan-hyhty/trainning/blob/task-1/bof5.py)
 sau đó, ta sẽ đưa shellcode vào trong stack, tuỳ trường hợp ta sẽ tìm offset từ địa chỉ ta leak được đến địa chỉ rip trỏ, sau đó set rip về địa chỉ shellcode - offset  
 file [bof6](https://github.com/wan-hyhty/trainning/blob/task-1/bof6)  
 script [bof6.py](https://github.com/wan-hyhty/trainning/blob/task-1/bof6.py)
+
+# ret2libc
+GOT: nơi chứa địa chỉ các hàm của libc  
+PLT: thực thi hàm được chứa trong GOT  
+0x403fd8 <puts@got.plt>:	0x00007fffff7e49420  
+0x403fd8 là GOT chứa địa chỉ 0x00007fffff7e49420 và PLT thực hiện địa chỉ đó  
+Nhiệm vụ là setup thanh ghi rdi thành địa chỉ puts để leak địa chỉ libc  
+do libc ở local khác với libc ở server, lưu ý ở mỗi libc sẽ có 3 giá trị cuối của địa chỉ leak là giống nhau  
+Để tìm file libc ta sử dụng trang libc.rip (libc.blukat.me), ô đầu là hàm ô thứ 2 là địa chỉ của hàm  
+Sau đó sử dụng công cụ pwninit  
+Tiếp đến ta tìm địa chỉ base, là địa chỉ nhỏ nhất của file mà ta load lên  
+địa chỉ base = địa chỉ đã leak - địa chỉ hàm (puts) trong libc  
+  
+tạo shellcode  
+đầu tiên ta cần kiểm tra chuỗi /bin/sh đã tồn tại ch, nếu chưa ta phải gọi hàm gets để truyền chuỗi vào  
+nếu rồi ta sẽ set thanh ghi rdi + địa chỉ chuỗi /bin/sh rồi truyền địa chỉ hàm system  
+
+![image](https://user-images.githubusercontent.com/111769169/218503278-3696b7ca-eca6-4560-ae41-dc6883d54059.png)  
+file: [bof7](https://github.com/wan-hyhty/trainning/blob/task-1/bof7)  
+libc : [mẫu chạy local](https://github.com/wan-hyhty/trainning/blob/task-1/libc6-amd64_2.31-0ubuntu9.1_i386.so)  
+file [bof7_patched](https://github.com/wan-hyhty/trainning/blob/task-1/bof7_patched)  
+code: [bof7.res](https://github.com/wan-hyhty/trainning/blob/task-1/bof7.py)  
+
