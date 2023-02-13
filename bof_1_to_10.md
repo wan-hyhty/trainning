@@ -72,6 +72,9 @@ Nhiệm vụ: đưa shellcode vào trong stack, dùng thanh ghi để thực hi�
 shellcode có thể tìm trên mạng tuỳ theo file 64 hay 32bit, hoặc có thể dùng asm  
 tiếp đến ta sẽ BOF đến địa chỉ saved rip và truyền địa chỉ call_rax để chương trình nhảy vào rax và thực thi shell  
 script: [bof5.py](https://github.com/wan-hyhty/trainning/blob/task-1/bof5.py)  
-
-
-
+   
+# ret2shellcode leak
+để có thể thì ta cần tìm mội lỗi fmt, ví dụ read nhưng không thêm byte null cuối chuỗi để leak được địa chỉ trong stack
+sau đó, ta sẽ đưa shellcode vào trong stack, tuỳ trường hợp ta sẽ tìm offset từ địa chỉ ta leak được đến địa chỉ rip trỏ, sau đó set rip về địa chỉ shellcode - offset  
+file [bof6](https://github.com/wan-hyhty/trainning/blob/task-1/bof6)  
+script [bof6.py](https://github.com/wan-hyhty/trainning/blob/task-1/bof6.py)
