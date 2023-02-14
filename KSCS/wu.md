@@ -1,0 +1,12 @@
+# Cat
+Đầu tiên ta đọc ida thì chương trình nhập user và pass  
+dòng 16 thì so sánh user nhập vào với 'KCSC_4dm1n1str4t0r',  
+![image](https://user-images.githubusercontent.com/111769169/218703859-3bb5da40-4884-4bca-9781-bfcb29534857.png)  
+và pass với cái gì đó nên ta đổi sang asm  
+thì thấy so sánh với 'wh3r3_1s_th3_fl4g'  
+![image](https://user-images.githubusercontent.com/111769169/218703964-427cc7ca-9cba-4e04-9e49-a6081952d460.png)  
+tiếp đến chương trình nhập vào 512 kí tự và rồi in ra  
+tuy nhiên ở đây ta thấy read() chỉ đọc 512 vào không có byte null kết thúc chuỗi nên khi ta nhập đủ 512byte, khi in ra chuỗi vừa nhập sẽ nối với flag  
+![image](https://user-images.githubusercontent.com/111769169/218704309-87c3547e-094f-4755-a25e-597f3ef182ab.png)  
+
+# Treasure
