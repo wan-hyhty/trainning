@@ -28,3 +28,4 @@ file: [overthewrite](https://github.com/wan-hyhty/trainning/blob/task-1/KSCS/fil
 ![image](https://user-images.githubusercontent.com/111769169/218717303-9afd0f9a-3084-47a0-83f8-dc6389188278.png)  
 [overthewrite.py](https://github.com/wan-hyhty/trainning/blob/task-1/KSCS/file/overthewrite.py)  
 ![image](https://user-images.githubusercontent.com/111769169/218718382-8b634a30-1d64-4560-b562-6f0687046dc3.png)  
+ # thelastone
