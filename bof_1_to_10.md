@@ -101,3 +101,13 @@ libc : [mẫu chạy local](https://github.com/wan-hyhty/trainning/blob/task-1/l
 file [bof7_patched](https://github.com/wan-hyhty/trainning/blob/task-1/bof7_patched)  
 code: [bof7.res](https://github.com/wan-hyhty/trainning/blob/task-1/bof7.py)  
 
+#saved rbp để chuyển hướng luồng thực thi
+overwrite thanh ghi saved $rbp để chuyển hướng luồng thực thi  
+là khi overwrite nhưng không đến $rip chỉ làm thay đổi thanh RBP  
+tìm offset của thanh rbp  
+tìm địa chỉ mà có quyền wr (có thể trong stack)  
+nếu trong stack thì ta cần truyền địa chỉ hàm win vào payload của mình (nên payload chỉ toàn địa chỉ hàm win để dễ dàng khi return vào stack)  
+lưu ý lệnh leave và return, khi leave thực hiện thì stack + thêm 8byte, return thực hiện thì stack + 8byte)  
+Các bài tương tự:
+[saved rbp vào payload chứa địa chỉ win](
+#
