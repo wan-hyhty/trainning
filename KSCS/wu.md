@@ -36,4 +36,18 @@ thay đổi thanh ghi rdi, nên ta tạo thử pattern 100
 ta thấy chương trình nhận vào 93byte và ta cần 88byte để OW địa chỉ rdi.  
 ta nên tranh nhảy vào đầu hàm để thực hiện vì lỗi xmm0
 [thelastone](https://github.com/wan-hyhty/trainning/blob/task-1/KSCS/file/thelastone) [thelastone.py](https://github.com/wan-hyhty/trainning/blob/task-1/KSCS/file/thelastone.py)  
-# 
+# shortjump
+Chúng ta thấy được lỗi BOF khi dream có 80 byte nhưng nhập vào 140 byte  
+![image](https://user-images.githubusercontent.com/111769169/218779901-d2a41227-0b90-4a1e-bcf7-9512ea7eeff5.png)  
+và tìm được offset 124
+vì để bộ nhớ stack không bị push khiến địa chỉ stack không đúng nên ta sẽ ret về main
+khi vào được hàm jmp1 thì ta chú ý  
+![image](https://user-images.githubusercontent.com/111769169/218780815-57ccea9a-67df-4b46-a26a-eafa9cbdcdd4.png)  
+so sánh địa chỉ $ebp-0x8 và 0xdeadbeef nên ta cần tìm địa chỉ offset ebp-0x8 và truyền 0xdeadbeef  
+  
+  ở đây chương trình eax + edx = 0x13371337 => eax = 0x13371337 - edx sẽ ra âm
+  ta sẽ lấy số dương, đổi sang bin bằng hàm bin(), nghịch đảo các bit, thêm bit 1 vào cuối và đổi sang hex
+![image](![image](https://user-images.githubusercontent.com/111769169/218785989-51d7aa19-8a0e-4f14-9ec8-8cfdc4446ab9.png))  
+[shortjumps](https://github.com/wan-hyhty/trainning/blob/task-1/KSCS/file/shortjumps) [shortjumps](https://github.com/wan-hyhty/trainning/blob/task-1/KSCS/file/shortjumps.py)  
+
+#
