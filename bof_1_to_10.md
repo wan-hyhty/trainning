@@ -115,5 +115,6 @@ file [msnw](https://github.com/wan-hyhty/dreamhack/blob/main/MSMW/msnw)
    
 Cần lưu ý những vị trí [rpb - 0x20...], vì khi thực hiện xong hàm con (hàm khác trong hàm main), địa chỉ rbp sẽ trừ đi và thực hiện tại địa chỉ mới  
 nên nếu muốn trỏ vào vị trí stack ta cần + thêm để khi trừ đi rbp sẽ đúng bằng địa chỉ ta muốn  
-![Uploading image.png…]()
+
+
 file [bof9](
