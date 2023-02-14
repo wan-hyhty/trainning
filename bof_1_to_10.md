@@ -124,3 +124,4 @@ lỗi xuất hiện khi ta sự dụng hàm scanf() do là hàm scanf chỉ nh�
 Vì là nhảy lung tung nên payload của ta sẽ bao gồm rất nhiều lệnh ret  
 vì khi lệnh ret xuất hiện (địa chỉ kế tiếp sẽ là con trỏ của hàm hoặc jj đó) nghĩa là nếu 2 lệnh ret thì nó sẽ vẫn chạy cho đến khi thấy con trỏ trỏ vào cái j đó để thực hiện tiếp.  
 thông qua đó payload của ta sẽ gồm rất nhiều lệnh ret để tăng tỉ lệ saved rbp mới nhảy trúng + địa chỉ trỏ đến sehllcode + shellcode  
+[bof10](https://github.com/wan-hyhty/trainning/blob/task-1/bof10) [bof10.py](https://github.com/wan-hyhty/trainning/blob/task-1/bof10.py)
