@@ -11,8 +11,9 @@ tuy nhiên ở đây ta thấy read() chỉ đọc 512 vào không có byte null
 
 # Treasure
 Khi chạy, chương trình in ra "Part 1: KCSC{"   
-  part 2 trong file có 4_t1ny_tr34sur3
+  part 2 trong file có 4_t1ny_tr34sur3  
 ![image](https://user-images.githubusercontent.com/111769169/218707107-5bf79c9b-da19-4b24-9b74-0f88906b4332.png)  
   Part 3:  
   ![image](https://user-images.githubusercontent.com/111769169/218707541-b041dfa3-0ecf-4c9f-9734-1816f22a3d41.png)
   
+# 
