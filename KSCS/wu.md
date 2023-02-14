@@ -29,3 +29,11 @@ file: [overthewrite](https://github.com/wan-hyhty/trainning/blob/task-1/KSCS/fil
 [overthewrite.py](https://github.com/wan-hyhty/trainning/blob/task-1/KSCS/file/overthewrite.py)  
 ![image](https://user-images.githubusercontent.com/111769169/218718382-8b634a30-1d64-4560-b562-6f0687046dc3.png)  
  # thelastone
+Ở đây ta thấy lỗi BOF  
+![image](https://user-images.githubusercontent.com/111769169/218741028-418910ef-7b2f-46aa-ad4c-b9e7cd184d73.png)
+thay đổi thanh ghi rdi, nên ta tạo thử pattern 100  
+![image](https://user-images.githubusercontent.com/111769169/218742551-5ec5a972-8ea8-44ee-a18c-23d5192d7995.png)
+ta thấy chương trình nhận vào 93byte và ta cần 88byte để OW địa chỉ rdi.  
+ta nên tranh nhảy vào đầu hàm để thực hiện vì lỗi xmm0
+[thelastone](https://github.com/wan-hyhty/trainning/blob/task-1/KSCS/file/thelastone) [thelastone.py](https://github.com/wan-hyhty/trainning/blob/task-1/KSCS/file/thelastone.py)  
+# 
