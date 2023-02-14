@@ -16,4 +16,14 @@ Khi chạy, chương trình in ra "Part 1: KCSC{"
   Part 3:  
   ![image](https://user-images.githubusercontent.com/111769169/218707541-b041dfa3-0ecf-4c9f-9734-1816f22a3d41.png)
   
-# 
+# overthewrite
+Nhiệm vụ của ta là làm thay đổi các biến để thoả 4 điều kiện  
+
+tìm offset  
+stage 1: 76byte  
+stage 2: 64byte  
+stage 3: 56byte  
+stage 4: 32byte  
+file: [overthewrite](https://github.com/wan-hyhty/trainning/blob/task-1/KSCS/file/overthewrite)  
+![image](https://user-images.githubusercontent.com/111769169/218717303-9afd0f9a-3084-47a0-83f8-dc6389188278.png)  
+[overthewrite.py](https://github.com/wan-hyhty/trainning/blob/task-1/KSCS/file/overthewrite.py)  
