@@ -57,5 +57,3 @@ vậy ta thấy địa chỉ stack đã thay đổi, ta sẽ tìm địa chỉ o
 Đến đây ta sẽ tính các địa chỉ mới của biến v6 và biến buf, sau đó ghi giá trị của ta vào 2 biến đó, cuối cùng gửi giá trị đó dưới dạng decimal vì scanf có %lld  
 
 #Lưu ý ta nên để %c%n lên đầu tiên payload, %n sẽ trỏ đến ***ĐỊA CHỈ*** và thay đổi giá trị tại địa chỉ đó  
-
-
