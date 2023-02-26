@@ -25,3 +25,5 @@ Lưu ý khi fread() đọc dữ liệu từ file vào chương trình, khi đó 
 # %n
 để thay đổi dữ liệu của một biến, ta sẽ cho in ra %{giá trị cần thay đổi}$c sau đó dùng %n để đọc các byte đã in ra và lưu vào địa chỉ mà %n trỏ đến  
 Trường hợp giá trị cần thay đổi quá lớn thì có thể chia thành 2 lần in, tuy nhiên lần thứ 2, %n sẽ đọc n byte của lần 1 và cộng m byte của lần 2
+
+Bài này em chưa xong =)))
