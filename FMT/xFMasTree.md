@@ -111,3 +111,6 @@ r.interactive()
 
   
 </details>
+
+Lưu ý: Thông qua bài này em thấy mình còn sai ở chỗ tính địa chỉ base, em coi lại các video thì rút ra kinh nghiệm tính địa chỉ base  
+![image](https://user-images.githubusercontent.com/111769169/221494512-1ca39d0d-998f-4515-99ba-8fcc584a4b7a.png)  
