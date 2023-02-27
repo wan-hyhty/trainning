@@ -67,5 +67,8 @@ p.interactive()
 
 </details>
 
-# Tấn công bảng GOT
+# %*
 [FMT_Xmaster.md](https://github.com/wan-hyhty/trainning/blob/task3/FMT/FMT_Xmaster.md)
+
+# Tấn công GOT 
+[xFMasTree.md](https://github.com/wan-hyhty/trainning/blob/task3/FMT/xFMasTree.md)
