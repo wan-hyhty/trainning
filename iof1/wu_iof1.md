@@ -75,4 +75,34 @@ int main()
 * khi nhìn vào source code ta thấy được ```alloca(n*8)``` thì ta phát hiện ở đây là lỗi IOF, em sẽ lấy một ví dụ sau.
 
 ##### ví dụ
-* thì theo lí thuyết trong clip, unsigned long int có phạm vi từ 0 đến 2 mũ 64 - 1
+* ta có kiểu int có phạm vi từ 0 đến 100, nghĩa là khi thực thi các phép + - * / thì kết quả vẫn nằm trong phạm vi 0 đến 100.
+* ta sẽ chạy thử trên chương trình sau
+```c
+#include <stdio.h>
+
+int main()
+{
+    int a;
+    scanf("%d", &a);
+    printf("%d", a * 8);
+}
+```
+
+phạm vi của int là ```-2,147,483,648 tới 2,147,483,647``` và em tính toán ```2147483647/8 = 268435455.875```, em thử với giá trị làm trò xuống ```268435455``` thì ```Output: 2147483640 ``` oke còn trong phạm vi, nhưng nếu e làm tròn lên ```268435456``` thì ```Output: -2147483648```, ta đã tràn phạm vi nên nó thành só âm =)))
+* vậy nếu bây giờ, em thử khai báo một biến là long, sau đó gán biểu thức ```a*8``` thì kết quả như thế nào
+```c
+#include <stdio.h>
+int main()
+{
+    int a;
+    scanf("%d", &a);
+    long b = a * 8;
+    printf("%ld", b);
+}
+```
+```input: 268435456 --- output: -2147483648``` =))) vậy qua phép thử trên và nhiều lần lập trình thì em hiểu là ```a*8``` nghĩa là ```(int) * (int) ```, thì ngôn ngữ C nó sẽ tự ép kiểu theo kiểu dữ liệu có phạm vi lớn nhất trong phép tính, trong trường hợp ``` int * int ``` thì nó sẽ tự hiểu là giá trị sau khi tính sẽ trả về dữ liệu int. Ví dụ trường hợp ```(int) * (long)``` thì giá trị trả về là long.
+> từ những phép thử trên ta thấy lỗi IOF ở ```alloca(n * 8) ```
+nghĩa là nếu ta nhập n sao cho n * 8 nó tràn ra phạm vi của unsigned long int để trả về giá trị nhỏ, hàm alloca sẽ cấp phát giá trị nhỏ đó và ta vẫn có thể nhập được số lượng kí tự lớn để BOF. 
+
+# Thực thi
+* Ở đây mỗi giá trị khác nhau cho ta những payload khác nhau về offset (giá trị nhỏ nhất là 0x2000000000000000), ở đây em chọn 0x2000000000000001
