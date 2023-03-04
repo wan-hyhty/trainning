@@ -72,11 +72,9 @@ int main()
 ```
 
 * khi nhìn vào source ta thấy có hàm alloca() thì hàm này có chức năng tương tự như malloc là cấp phát bộ nhớ nhưng thay vì nằm trên heap như malloc thì alloca cấp phát bộ nhớ trên stack. ví dụ alloca(16) sẽ cấp phát 16 byte  
-* khi nhìn vào source code ta thấy được ```alloca(n*8)``` thì ta phát hiện ở đây là lỗi IOF, em sẽ lấy một ví dụ sau.
+* khi nhìn vào source code ta thấy được ```alloca(n*8)``` thì ta phát hiện ở đây là lỗi IOF, ta sẽ lấy một ví dụ sau.
 
 ##### ví dụ
-* ta có kiểu int có phạm vi từ 0 đến 100, nghĩa là khi thực thi các phép + - * / thì kết quả vẫn nằm trong phạm vi 0 đến 100.
-* ta sẽ chạy thử trên chương trình sau
 ```c
 #include <stdio.h>
 
@@ -109,6 +107,8 @@ nghĩa là nếu ta nhập n sao cho n * 8 nó tràn ra phạm vi của unsigned
 * Chạy thử debug thì ta đã đúng, khi ta đã cấp phát bộ nhớ nhỏ và số lượng kí tự nhập vào lớn  
 ![image](https://user-images.githubusercontent.com/111769169/222918324-d23d04d7-6676-4b7d-8b7b-77182c08da22.png)  
 * việc sau đó là ret2libc
+<details> <summary> script </summary>
+	
 ```python
 #!/usr/bin/env python3
 
@@ -167,3 +167,5 @@ def main():
 if __name__ == "__main__":
     main()
 ```
+	
+</summary>
