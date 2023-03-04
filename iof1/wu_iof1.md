@@ -75,4 +75,5 @@ int main()
 * khi nhìn vào source code ta thấy được ```alloca(n*8)``` thì ta phát hiện ở đây là lỗi IOF, em sẽ lấy một ví dụ sau.
 
 ##### ví dụ
-* thì theo lí thuyết trong clip, unsigned long int có phạm vi từ 0 đến 2 mũ 64 - 1
+* thì theo lí thuyết trong clip, unsigned long int có phạm vi từ 0 đến 2 mũ 64 - 1  
+![image](https://user-images.githubusercontent.com/111769169/222915627-394c9c91-bdb4-4ed8-b17e-2538354db457.png)  
