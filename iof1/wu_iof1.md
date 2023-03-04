@@ -71,6 +71,8 @@ int main()
 }
 ```
 
+* khi nhìn vào source ta thấy có hàm alloca() thì hàm này có chức năng tương tự như malloc là cấp phát bộ nhớ nhưng thay vì nằm trên heap như malloc thì alloca cấp phát bộ nhớ trên stack. ví dụ alloca(16) sẽ cấp phát 16 byte  
+* khi nhìn vào source code ta thấy được ```alloca(n*8)``` thì ta phát hiện ở đây là lỗi IOF, em sẽ lấy một ví dụ sau.
 
-* ở đây chương trình cho ta nhập vào biến v6 8byte, khi thảo luận với các bạn khác và debug theo dõi chương trình thì ta thấy nhiệm vụ của chúng ta là không nên nhảy vào while và if.  
-* hàm while điều kiện là ``` địa chỉ v6 so với giá trị địa chỉ v6 - (v3 & 0xFFFFFFFFFFFFF000)``` phải bằng nhau thì mới không chạy while nghĩa là giá trị ``` v3 & 0xFFFFFFFFFFFFF000 == 0``` khi lấy ``` 0xfff & 0xFFFFFFFFFFFFF000 ``` kết quả là 0 và 0x1000 thì kết quả 
+##### ví dụ
+* thì theo lí thuyết trong clip, unsigned long int có phạm vi từ 0 đến 2 mũ 64 - 1
