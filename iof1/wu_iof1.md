@@ -85,7 +85,7 @@ int main()
     printf("%d", a * 8);
 }
 ```
-
+[các kiểu dữ liệu và phạm vi](https://blog.luyencode.net/kieu-du-lieu-trong-c/#kieu-so-nguyen)
 phạm vi của int là ```-2,147,483,648 tới 2,147,483,647``` và em tính toán ```2147483647/8 = 268435455.875```, em thử với giá trị làm trò xuống ```268435455``` thì ```Output: 2147483640 ``` oke còn trong phạm vi, nhưng nếu e làm tròn lên ```268435456``` thì ```Output: -2147483648```, ta đã tràn phạm vi nên nó thành só âm =)))
 * vậy nếu bây giờ, em thử khai báo một biến là long, sau đó gán biểu thức ```a*8``` thì kết quả như thế nào
 ```c
