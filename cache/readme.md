@@ -20,3 +20,4 @@ Age of user: 0x6f636970
 do ở đây ta dùng tool để swap  
 ![image](https://user-images.githubusercontent.com/111769169/224530440-17144a8b-2564-4c2e-9e7e-8f95dca34c8b.png)
 
+[sưu tầm](https://shakuganz.com/2022/03/30/picoctf-2022-write-up-binary-exploitation/)
