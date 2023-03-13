@@ -73,3 +73,5 @@ p.sendlineafter(b'rst one less than 10.', payload)
  
 p.interactive()
 ```
+### Đọc thêm
+[wu-kcsc](https://kcsctrainingwriteup.wordpress.com/2022/03/22/picoctf-2022-function-overwrite/)
