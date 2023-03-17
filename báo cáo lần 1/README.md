@@ -93,8 +93,58 @@ ___
   # Các kĩ thuật BOF
   ### Tràn biến
   nghĩa là ta sẽ thay đổi dữ liệu mà biến đó lưu trữ, việc cần làm của chúng ta là kiểm tra địa chỉ của biến đó, ow đến địa chỉ đó và truyền vào giá trị mà mình mong muốn
-  tuy vậy, các bài tràn biến thường đi chung với những phép toán biến đổi, hoặc là giá trị cần thay đổi là số âm, số thập phân
-  Để biến đổi số thập phân sang hex em có sưu tầm được
-  ![image](https://user-images.githubusercontent.com/111769169/225925905-04d8cf4d-fb31-4131-8591-bd849d4ffd52.png)
+  tuy vậy, các bài tràn biến thường đi chung với những phép toán biến đổi, hoặc là giá trị cần thay đổi là số âm, số thập phân  
+  Để biến đổi số thập phân sang hex em có sưu tầm được  
+  ![image](https://user-images.githubusercontent.com/111769169/225925905-04d8cf4d-fb31-4131-8591-bd849d4ffd52.png)  
+  Số âm sang hex
+  ![image](https://user-images.githubusercontent.com/111769169/225926621-1618b0ba-eab2-43e6-9ea0-1f67733e453f.png)  
+  
+  ### ret2win
+  Khi canary tắt, ta có thể ow saved rip thành hàm chứa system
+  Dạng này hay có lỗi xmm1 (stack không chia hết cho 8), do push khi ta nhảy vào đầu hàm do đó ta sẽ nhảy sâu hơn một xíu nữa để bỏ qua lệnh push gây lỗi
+  
+  ### ret2shellcode
+  Khi NX tắt, ta có thể đưa shellcode vào để thực thi
+  do code shellcode = asm khá khó, với một số bài cơ bản thì ta có thể sài các shellcode
+  <details> <summary> 64 bit </summary>
+    
+    shellcode = asm(
+    '''
+    mov rax, 0x3b
+    mov rdi, 29400045130965551
+    push rdi
+    
+    mov rdi, rsp
+    xor rsi, rsi
+    xor rdx, rdx
+    
+    syscall
+    ''', arch='amd64'
+    )
+    
+  </details>
 
- 
+  ### ret2libc
+  GOT: nơi chứa địa chỉ các hàm của libc
+  PLT: thực thi hàm được chứa trong GOT
+  
+  đầu tiên để leak libc, ta có thể sử dụng put@plt để in ra địa chỉ puts@got trên server do puts cần 1 thanh ghi rdi để thực thi
+___
+  # FMT
+  Đối với 32bit: in dữ liệu trên stack  
+64bit: 5% đầu của 5 thanh ghi, % thứ 6 là dữ liệu trên stack  
+  %{n}$p, in địa chỉ trên stack vị trí thứ n  
+  %{n}$c tại vị trí n, nó sẽ in ra byte nó trỏ đến (0x1234 %c sẽ là 0x34)  
+  %s là nó sẽ ỉn cho đến khi găp bài 0x00  
+  %{n}n đếm số lượng byte được in ra trước đó, rồi ghi vị thứ n  
+  %* là pading ví dụ ```%*10$c    # tại vị trí thứ 10, chứa 0x1234``` ở đây %* có nhiệm vụ là tạo ra 0x1234 kí tự rồi %c để in ra 0x1234 kí tự.  
+  
+  em thấy 1 bài mà em giải khá kĩ [link](https://github.com/wan-hyhty/CTFs_competition/tree/main/utctf) sử dụng cả ret2libc, và dạng dùng con trỏ stack có sẵn để thay đổi dữ liệu (dạng này nói lí thuyết khá khó hình dung nên xem wu sẽ dễ hiểu hơn)
+___ 
+  # interget overflow
+  dạng bài này khá khó nhận biết với những bài khó    
+  ta nhớ số không dấu thì giới hạn của nó là 0xff  
+  và có dấu thì giới hạn là 0x7f là dương, 0x80 trở lên là âm  
+  một bài trong pico thể hiện rõ kĩ thuật IOF 
+  
+  
