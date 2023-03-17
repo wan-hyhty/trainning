@@ -145,6 +145,6 @@ ___
   dạng bài này khá khó nhận biết với những bài khó    
   ta nhớ số không dấu thì giới hạn của nó là 0xff  
   và có dấu thì giới hạn là 0x7f là dương, 0x80 trở lên là âm  
-  một bài trong pico thể hiện rõ kĩ thuật IOF 
+  một bài trong pico thể hiện rõ kĩ thuật IOF _em sẽ update link wu chi tiết_ ở đây là file binary [two-sum]
   
   
