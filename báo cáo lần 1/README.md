@@ -205,4 +205,6 @@ ___
     
   </details>
   
+# dự định cho bài báo cáo lần 2
+em sẽ tìm hiểu privilege_escalation (Leo thang đặc quyền)
   
