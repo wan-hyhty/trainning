@@ -96,7 +96,7 @@ ___
   tuy vậy, các bài tràn biến thường đi chung với những phép toán biến đổi, hoặc là giá trị cần thay đổi là số âm, số thập phân  
   Để biến đổi số thập phân sang hex em có sưu tầm được  
   ![image](https://user-images.githubusercontent.com/111769169/225925905-04d8cf4d-fb31-4131-8591-bd849d4ffd52.png)  
-  Số âm sang hex
+  Số âm sang hex  
   ![image](https://user-images.githubusercontent.com/111769169/225926621-1618b0ba-eab2-43e6-9ea0-1f67733e453f.png)  
   
   ### ret2win
