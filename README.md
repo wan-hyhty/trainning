@@ -369,7 +369,7 @@ log.info("base libc " + hex(libc.address))
 
 ![image](https://user-images.githubusercontent.com/111769169/227422644-f52f900e-d1a7-4163-911a-eb9d438420e5.png)
 
-### One_gadget
+### Bước 2: One_gadget
 
 - Ở đây ta sử dụng one_gadget để tạo shell, sau khi kiểm tra em thấy shell thứ 3 thoả điều kiện nên em lấy lun
 
