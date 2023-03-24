@@ -227,6 +227,38 @@ r.interactive()
 
 </details>
 
+# Return address overflow
+## Source C
+```c
+// Name: rao.c
+// Compile: gcc -o rao rao.c -fno-stack-protector -no-pie
+
+#include <stdio.h>
+#include <unistd.h>
+
+void init() {
+  setvbuf(stdin, 0, 2, 0);
+  setvbuf(stdout, 0, 2, 0);
+}
+
+void get_shell() {
+  char *cmd = "/bin/sh";
+  char *args[] = {cmd, NULL};
+
+  execve(cmd, args, NULL);
+}
+
+int main() {
+  char buf[0x28];
+
+  init();
+
+  printf("Input: ");
+  scanf("%s", buf);
+
+  return 0;
+}
+```
 # basic_exploitation_003
 
 ## Source C
@@ -265,22 +297,44 @@ int main(int argc, char *argv[]) {
 </details>
 
 ## Ý tưởng
+
 - mảng `c char stack_buf[0x90] = {};` khai báo 0x90 byte
 - `c read(0, heap_buf, 0x80);` nhập vào heap_buf 0x80 byte
 - `c sprintf(stack_buf, heap_buf);` lấy chuỗi của heap_buf bỏ vào stack_buf
-> điều này có nghĩa là nếu nhập 0x80 byte heap_buf thì không thể nào ret2win vì không bof stack_buf
+
+  > điều này có nghĩa là nếu nhập 0x80 byte heap_buf thì không thể nào ret2win vì không bof stack_buf
 
 - Ở đây ta chú ý hàm `sprintf`, cú pháp của nó là:
+
 ```c
 sprintf (target, format,... ) ;
 // target là chuỗi đích
-// format là chuỗi định dạng 
+// format là chuỗi định dạng
 ```
+
 - ta thấy `c sprintf(stack_buf, heap_buf);` không có định dạng (%s), nên rất có thể là lỗi fmt
 - ta thử %p để heap_buf bỏ vào stack_buf thứ gì
 
 ![image](https://user-images.githubusercontent.com/111769169/227451048-e93c3cb0-55ce-4826-8660-41caea779a7c.png)
 
+- Đến đây ta có ý tưởng, ta sẽ sử dụng fmt, nhập vào %p = 2byte để ghi vào stack nhiều hơn 2byte, như vậy hoàn toàn có thể ret2win
+
+## Thực thi
+
+- Ở đây do stack thay đổi, chúng ta nên chọn 1 địa chỉ nào trong stack cố định, không đổi độ dài khi chạy local và server, em chọn địa chỉ saved rip, vì mỗi lần chạy nó không thay đổi về độ dài (10 kí tự)
+
+![image](https://user-images.githubusercontent.com/111769169/227505093-b4a7b42b-a045-4354-a02e-8bfd9698f540.png)
+
+- ở vị trí thứ 37 và 16 lần `%37$p` thì nó gần đến địa chỉ rip, và em thêm 12 byte "a" để ow rbp, sau đó ow rip bằng hàm get_shell
+
+```python
+payload = b"%37$p" * 16 + b"a" * 12
+payload += p32(exe.sym['get_shell'] + 1)
+```
+
+## Kết quả
+
+![image](https://user-images.githubusercontent.com/111769169/227506310-2a45dfee-823a-4a99-b958-5027d55031ae.png)
 
 # shell_basic
 
