@@ -265,6 +265,21 @@ int main(int argc, char *argv[]) {
 </details>
 
 ## Ý tưởng
+- mảng `c char stack_buf[0x90] = {};` khai báo 0x90 byte
+- `c read(0, heap_buf, 0x80);` nhập vào heap_buf 0x80 byte
+- `c sprintf(stack_buf, heap_buf);` lấy chuỗi của heap_buf bỏ vào stack_buf
+> điều này có nghĩa là nếu nhập 0x80 byte heap_buf thì không thể nào ret2win vì không bof stack_buf
+
+- Ở đây ta chú ý hàm `sprintf`, cú pháp của nó là:
+```c
+sprintf (target, format,... ) ;
+// target là chuỗi đích
+// format là chuỗi định dạng 
+```
+- ta thấy `c sprintf(stack_buf, heap_buf);` không có định dạng (%s), nên rất có thể là lỗi fmt
+- ta thử %p để heap_buf bỏ vào stack_buf thứ gì
+
+![image](https://user-images.githubusercontent.com/111769169/227451048-e93c3cb0-55ce-4826-8660-41caea779a7c.png)
 
 
 # shell_basic
