@@ -153,7 +153,7 @@ r.interactive()
 
 ## source
 
-<details> <summary> source c <summary>
+<details> <summary> source c </summary>
 
 ```c
 #include <stdio.h>
