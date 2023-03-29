@@ -1,3 +1,8 @@
+# Mục lục
+[basic_exploitation_000](https://github.com/wan-hyhty/trainning/tree/task-7#basic_exploitation_000)
+
+
+
 # basic_exploitation_000
 
 ## Source C
