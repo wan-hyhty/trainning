@@ -1179,7 +1179,7 @@ int main()
 }
 ```
 
-<details>
+</details>
 
 ## Ý tưởng
 
