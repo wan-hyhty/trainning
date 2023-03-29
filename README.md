@@ -1,14 +1,24 @@
 # Mục lục
 
-[basic_exploitation_000](https://github.com/wan-hyhty/trainning/tree/task-7#basic_exploitation_000)
-[basic_exploitation_001](https://github.com/wan-hyhty/trainning/tree/task-7#basic_exploitation_001)
-[shell_basic](https://github.com/wan-hyhty/trainning/tree/task-7#shell_basic)
-[Return address overflow](https://github.com/wan-hyhty/trainning/tree/task-7#return-address-overflow)
-[basic_exploitation_003](https://github.com/wan-hyhty/trainning/tree/task-7#basic_exploitation_003)
-[out_of_bound](https://github.com/wan-hyhty/trainning/tree/task-7#out_of_bound)
-[Return to Shellcode](https://github.com/wan-hyhty/trainning/tree/task-7#return-to-shellcode)
-[basic_rop_x86](https://github.com/wan-hyhty/trainning/tree/task-7#basic_rop_x86)
-[]
+[basic_exploitation_000](https://github.com/wan-hyhty/trainning/tree/task-7#basic_exploitation_000)  
+[basic_exploitation_001](https://github.com/wan-hyhty/trainning/tree/task-7#basic_exploitation_001)  
+[shell_basic](https://github.com/wan-hyhty/trainning/tree/task-7#shell_basic)  
+[Return address overflow](https://github.com/wan-hyhty/trainning/tree/task-7#return-address-overflow)  
+[basic_exploitation_003](https://github.com/wan-hyhty/trainning/tree/task-7#basic_exploitation_003)  
+[out_of_bound](https://github.com/wan-hyhty/trainning/tree/task-7#out_of_bound)  
+[Return to Shellcode](https://github.com/wan-hyhty/trainning/tree/task-7#return-to-shellcode)  
+[basic_rop_x86](https://github.com/wan-hyhty/trainning/tree/task-7#basic_rop_x86)  
+[basic_rop_x64](https://github.com/wan-hyhty/trainning/tree/task-7#basic_rop_x64)  
+[sint](https://github.com/wan-hyhty/trainning/tree/task-7#sint)  
+[Return_to_Library](https://github.com/wan-hyhty/trainning/tree/task-7#return_to_library)  
+[one_shot](https://github.com/wan-hyhty/trainning/tree/task-7#one_shot)  
+[off_by_one_001](https://github.com/wan-hyhty/trainning/tree/task-7#off_by_one_001)  
+[hook](https://github.com/wan-hyhty/trainning/tree/task-7#hook)  
+[rop](https://github.com/wan-hyhty/trainning/tree/task-7#rop)  
+[off_by_one_000](https://github.com/wan-hyhty/trainning/tree/task-7#off_by_one_000)  
+[cmd_center](https://github.com/wan-hyhty/trainning/tree/task-7#cmd_center)  
+[ssp_000](https://github.com/wan-hyhty/trainning/tree/task-7#ssp_000)  
+[fho](https://github.com/wan-hyhty/trainning/tree/task-7#fho)  
 
 # basic_exploitation_000
 
@@ -836,7 +846,8 @@ r.interactive()
 
 </details>
 
-___
+---
+
 # basic_rop_x86
 
 ## source
