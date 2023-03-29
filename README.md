@@ -834,7 +834,7 @@ r.interactive()
 
 ```
 
-</detials>
+</details>
 
 ___
 # basic_rop_x86
