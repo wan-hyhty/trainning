@@ -1,6 +1,6 @@
 # Mục lục
 
-[basic_exploitation_000](https://github.com/wan-hyhty/trainning/tree/task-7#basic_exploitation_000)  
+[x][basic_exploitation_000](https://github.com/wan-hyhty/trainning/tree/task-7#basic_exploitation_000)  
 [basic_exploitation_001](https://github.com/wan-hyhty/trainning/tree/task-7#basic_exploitation_001)  
 [shell_basic](https://github.com/wan-hyhty/trainning/tree/task-7#shell_basic)  
 [Return address overflow](https://github.com/wan-hyhty/trainning/tree/task-7#return-address-overflow)  
