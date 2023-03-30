@@ -76,7 +76,7 @@ Ví dụ, nếu một tệp tin được cấu hình với quyền đọc và gh
 
 - Em cũng xoá cả quyền chmod của user bằng lệnh `sudo setfacl -m u:<username>:--- /bin/chmod (<username> là tên người dùng)`
 
-### Khai thác
+#### Khai thác
 
 - Đầu tiên ta xem quyền của `/etc/shadow`, ta có quyền read-write, do sơ xuất của root không giới hạn quyền truy cập
 
@@ -136,3 +136,7 @@ hacklord:$6$vUGWj4l1$qA31OXE2NZkzyBH4G/3wFLPnlB/qKiR6fDXlEo7mnMSLjxUjcn7cDuTiB9I
 - Cuối cùng ta sẽ đăng nhập với vai trò là root `su root` khi được hỏi password ta nhập theo pass mới mà ta ghi đè (trường hợp của em là 1235)
 
 ![image](https://user-images.githubusercontent.com/111769169/228844576-5ff3a04f-3a1f-473c-a2e8-dfaba901e1c9.png)
+
+#### Thay đổi quyền truy cập của các tệp tin và thư mục(chmod)
+
+- Dùng chmod để thay đổi quyền của file sẽ khả thi nếu root không giới hạn quyền này ở user
