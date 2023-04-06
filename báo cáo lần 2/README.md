@@ -1,4 +1,4 @@
-# Linux Privilege Escalation
+# Linux Privilege Escalation - Part 1
 
 ## Một số bước cần thực hiện
 
@@ -121,7 +121,7 @@ hacklord:$6$vUGWj4l1$qA31OXE2NZkzyBH4G/3wFLPnlB/qKiR6fDXlEo7mnMSLjxUjcn7cDuTiB9I
 - Dòng đầu tiên chính là mật khẩu đã được mã hoá SHA-512 hash (là hàm một chiều, nghĩa là không thể giải mã)
 - Do ta có quyền ghi nên ta có thể tạo mật khẩu của chúng ta, dùng SHA-512 hash để mã hoá và sau đó ghi vào file `/etc/shadow`
 - Để tạo được một mật khẩu mới được mã hoá bằng SHA-512 ta dùng lệnh `mkpasswd -m sha-512 <newPassword>`sau đó ghi vào ở khoảng giữa 2 dấu ':'
-- Nếu dòng đầu tiên ở giữa 2 dấu ":" là "*" thì nghĩa root chưa cài pass
+- Nếu dòng đầu tiên ở giữa 2 dấu ":" là "\*" thì nghĩa root chưa cài pass
 
 ![image](https://user-images.githubusercontent.com/111769169/228843099-2c5bb2aa-21a7-408e-9076-c8fcb5e02b04.png)
 
@@ -137,6 +137,111 @@ hacklord:$6$vUGWj4l1$qA31OXE2NZkzyBH4G/3wFLPnlB/qKiR6fDXlEo7mnMSLjxUjcn7cDuTiB9I
 
 ![image](https://user-images.githubusercontent.com/111769169/228844576-5ff3a04f-3a1f-473c-a2e8-dfaba901e1c9.png)
 
-#### Thay đổi quyền truy cập của các tệp tin và thư mục(chmod)
+#### Writable /etc/passwd
 
-- Dùng chmod để thay đổi quyền của file sẽ khả thi nếu root không giới hạn quyền này ở user
+##### /etc/passwd là gì ?
+
+- Trong hệ thống Linux, tập tin /etc/passwd là một tập tin văn bản lưu trữ thông tin về các tài khoản người dùng trên hệ thống.
+- Tên tài khoản, Mật khẩu,...
+- Lổ hổng này là do root không giới hạn quyền write vào `/etc/passwd`, khi đó kẻ xấu có thể ghi đè giá trị hash của mật khẩu thành hash của mật khẩu của kẻ trộm
+
+##### Khai thác
+
+- Thông thường, `/etc/passwd` mặc định là không có quyền write nhưng nếu ta có thể lên được các vị trí cao hơn trong server để thay đổi quyền.
+- Ở đây ta sẽ tạo một ví dụ là root quên giới hạn quyền write cho user nên ta có thể thay đổi được giá trị hash của mật khẩu được lưu trong file
+
+- Mặc định ở 3 chỗ cuối chúng ta sẽ không có quyền w, nhưng ở đây ta sẽ set quyền w cho user
+  ![image](https://user-images.githubusercontent.com/111769169/230270541-f5c7cbed-9cdf-409f-9056-39c0d786cf5b.png)
+
+- Đầu tiên ta sẽ tạo một hash `từ chữ sang hash` bằng lệnh `mkpasswd`
+- Ở đây em sẽ tạo một pass abcd có chuỗi hash là `$1$r4iS7BSh$3Thjzf0Eq0w5WzlXuhi.L1` (ta không cần thiết chạy trên server, có thể chạy trên máy của mình)
+- Sau đó ta chú ý trong `/etc/passwd`, pass của chúng ta đã được mã hoá là `x`, ta sẽ ghi đè hash của chúng ta vào đó
+
+![image](https://user-images.githubusercontent.com/111769169/230271929-80b19f66-fa16-40ab-b3bc-20a1bab103ae.png)
+
+![image](https://user-images.githubusercontent.com/111769169/230272170-8eb2ce61-911a-45f4-b984-d253a347f398.png)
+
+- Vậy là ta có thể sử dụng pass (ở đây là abcd) để đăng nhập với vai trò là root
+
+![image](https://user-images.githubusercontent.com/111769169/230272380-930d6e9e-fef4-4d88-b5da-7dc6d440f51d.png)
+
+#### Sudo Rights with Iftop, More, less, ftp, man
+
+- Đây là những lệnh ta có thể dùng để có được quyền sudo
+- Trong trường hợp này, việc giới hạn quyền khá khó khăn, cho nên mặc định chúng ta sẽ có thể sử dụng tất cả các quyền. (trong ctf sẽ bị hạn chế quyền)
+- dùng `sudo -l` để kiểm tra ta có thể sử dụng quyền gì
+
+![image](https://user-images.githubusercontent.com/111769169/230274156-3e98d135-454a-4ce5-8d19-f0452a8db6cf.png)
+
+- Trên thực tế, ta chỉ được sử dụng các quyền này
+  ![image](https://user-images.githubusercontent.com/111769169/230274274-802d6d90-9aeb-4cdb-b11d-1296ca5bfde9.png)
+
+###### iftop
+
+> bài này em không chạy được, có thể họ đã tắt chức năng này rồi
+
+- Server phải được cài các iftop
+- chạy lệnh `sudo /usr/sbin/iftop`
+- Giao diện của iftop như này
+
+![image](https://user-images.githubusercontent.com/111769169/230276056-5e30087e-7e31-4877-903a-dfb96f72d8d5.png)
+
+- Ta sẽ giữ `shift+1` thì giao diện sẽ như này, nhập vào sh và enter
+
+![image](https://user-images.githubusercontent.com/111769169/230276493-5236c9a3-a9e3-41c6-a52e-0f99c13a866a.png)
+
+![image](https://user-images.githubusercontent.com/111769169/230276637-4f68cbe2-94e8-4df8-a82c-b0f35f141f86.png)
+
+###### less
+
+- /usr/bin/less là một chương trình dòng lệnh trong Linux được sử dụng để xem nội dung của một tập tin văn bản dài. Nó cho phép bạn xem và đọc các tập tin lớn mà không cần phải tải toàn bộ tập tin vào bộ nhớ, giúp tiết kiệm tài nguyên hệ thống.
+- và nó có shell command để ta thực hiện chiếm shell
+- Chạy lệnh `sudo /usr/bin/less /etc/passwd`
+
+![image](https://user-images.githubusercontent.com/111769169/230277507-6e84aa8f-c346-40c1-a630-1355bfe3e4d1.png)
+
+- Ta giữ `shift + 1` và gõ `sh`
+
+![image](https://user-images.githubusercontent.com/111769169/230277714-796542a5-0696-4366-8b13-808d9c0d0470.png)
+
+![image](https://user-images.githubusercontent.com/111769169/230277803-8f1f3423-b04b-44f1-b035-39b47817d7ee.png)
+
+###### more
+
+- /bin/more là một chương trình dòng lệnh trong Linux được sử dụng để xem nội dung của một tập tin văn bản dài. Nó cho phép bạn xem và đọc các tập tin lớn một trang một lần, giúp tránh hiện tượng quá tải bộ nhớ.
+- Tiếp tục một hướng khai thác tương tự như less, do nó có thể thực thi shell command
+- Chạy lệnh `sudo /bin/more /etc/passwd`
+- ở đây more nó sẽ in ra màn hình, nếu phần văn bản không in ra hết nó sẽ để more như này
+  ![image](https://user-images.githubusercontent.com/111769169/230278694-cb3fe57e-443b-4ba9-bda5-c68e364cf259.png)
+- Cho nên nếu để màn hình quá lớn, văn bản sẽ được in ra hết và không có chữ more để ta thực thi shell
+- Vậy ta sẽ thu nhỏ màn lại và chạy lệnh trên
+  ![image](https://user-images.githubusercontent.com/111769169/230278933-3c200dc7-6388-4934-bd4c-0d9e1f0a51d7.png)
+- Và tiếp tục là `!sh`
+
+  ![image](https://user-images.githubusercontent.com/111769169/230279040-ae8dcbcb-37bc-4464-9baf-b5439fc5aa3f.png)
+
+  ![image](https://user-images.githubusercontent.com/111769169/230279181-781ef731-b3a0-4723-8c1d-06b77960f597.png)
+
+##### Chú ý
+
+- Nếu kiểm tra các lệnh có thể sử dụng mà có lệnh less hoặc more, ta nên thử dùng less (more) để đọc thử file flag.txt
+  ![image](https://user-images.githubusercontent.com/111769169/230279533-36eb3660-682c-4d85-b78e-0640842b498f.png)
+
+###### man
+
+- `man` là một tiện ích trong hệ điều hành Linux được sử dụng để hiển thị hướng dẫn sử dụng cho các lệnh, các tập tin cấu hình, các gói phần mềm, các hàm thư viện và các tài liệu khác trên hệ thống. Man được viết tắt từ Manual (sách hướng dẫn) và là một phần quan trọng của hệ thống Linux.
+- `man` khi in ra văn bản quá dài sẽ có chữ `more` (phần văn bản chưa in hết), do đó cách khai thác tương tự như `more`
+
+![image](https://user-images.githubusercontent.com/111769169/230280137-bfa5e140-ee98-4f32-abf5-f1e313922895.png)
+
+- Ta sử dụng lệnh `sudo man ls` hoặc `sudo /usr/bin/man ls`
+
+![image](https://user-images.githubusercontent.com/111769169/230280745-1dcddf99-7db5-4c2e-8174-4f720e5cca86.png)
+
+![image](https://user-images.githubusercontent.com/111769169/230280643-29093afd-a548-481a-9461-4f427174ce4b.png)
+
+###### ftp
+
+- Trong Linux, FTP có thể được sử dụng để truyền tải tập tin giữa các máy tính trên mạng bằng cách sử dụng một chương trình FTP như ftp hoặc sftp trong terminal.
+
+  ![image](https://user-images.githubusercontent.com/111769169/230285007-84d7e6d7-e8b0-44c1-a328-1c1d1c56e75f.png)
