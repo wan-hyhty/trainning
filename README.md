@@ -118,7 +118,7 @@ p.sendlineafter(b'> ', b'3')
 ```
 
 - rax của bài này hơi khác xíu nhưng ta vẫn có thể sử dụng được
-- Nếu để pop_rax như này thì nó lỗi, sau khi tìm hiểu thì nó sẽ gây lỗi nếu rax khác ở dưới thì nó sẽ cộng thêm vào rax, do đó e thử chuyển lên đầu thì nó ổn
+- Nếu để pop_rax như này thì nó lỗi, sau khi tìm hiểu thì nó sẽ gây lỗi nếu rax ở dưới thì nó sẽ cộng thêm vào rax, do đó e thử chuyển lên đầu thì nó ổn
 
 ```python
 payload1 = b'A'*88
