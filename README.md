@@ -165,8 +165,8 @@ unsigned __int64 vuln()
 ## Ý tưởng
 
 - Bài này cung cấp cho ta đủ các pop nên khác là dễ dàng, chỉ thiếu chuỗi /bin/sh
-- Ở đây ta thấy chỗ này
-  ![image](https://user-images.githubusercontent.com/111769169/230182136-b9b7eae1-6830-4153-921a-0e60e5a243f8.png)
+- Ở đây ta thấy chỗ này  
+![image](https://user-images.githubusercontent.com/111769169/230182136-b9b7eae1-6830-4153-921a-0e60e5a243f8.png)
 - việc chắc chắn ta phải làm là ghi đè byte 0x00 của canary để %s in ra canary, tuy vậy ta thấy nó có thể leak địa chỉ stack =))
 - Vậy chỉ cần payload của ta có /bin/sh và từ địa chỉ ta leak được ta sẽ tính được địa chỉ chứa chuỗi /bin/sh
 - Nhưng bài này không dễ ăn =))
@@ -190,7 +190,8 @@ unsigned __int64 vuln()
 ```
 
 - Do là lần nhập thứ 2 ta thấy code C, hàm read truyền vào địa chỉ, do đó nếu ta đưa vào địa chỉ stack chứa canary, để lần thứ 3 ta ghi lại canary
-- Đó là lí do tại sao ta cần phải tính `ow_canary = stack - 72`
+- Đó là lí do tại sao ta cần phải tính `ow_canary = stack - 24`
+
 
 ```c
   puts("What is rop ?");
@@ -213,7 +214,7 @@ unsigned __int64 vuln()
 
   ![image](https://user-images.githubusercontent.com/111769169/230187849-6f083d96-93db-4863-bde7-0e4ddb1153da.png)
 
-- ta tìm địa chỉ mà chương trình lấy để xor với canary
+- ta tìm địa chỉ mà chương trình lấy để xor với canary  
   ![image](https://user-images.githubusercontent.com/111769169/230188756-dbfe97b7-3c7e-4c14-9cac-4e2c2d54674c.png)
 - Vậy ta cần phải ghi đè ở chỗ trong hình, offset là -56 so với stack ta leak nên cần chỉnh lại script một tí
 
