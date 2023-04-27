@@ -76,6 +76,8 @@ LABEL_15:
 
 ## Thực thi
 
+- Bài này em có tham khảo wu a Quý =))
+
 - Đầu tiên ta cần tạo một chunk với size tuỳ ý và free nó
 
 ```python
