@@ -186,7 +186,8 @@ tại các địa chỉ sau có, nếu không sử dụng consolidation
 
 - Do không tìm được vùng trống đủ, top chunk sẽ cắt một phần vùng trống của mình để có đủ vùng trống cho chunk 3
 
-> các kiến thức mới em sẽ cập nhật liên tục
+# Free
+- Một lưu ý về hàm free là không hẳn lúc nào free một chunk là sẽ xoá hết dữ liệu trong chunk đó mà chỉ set chunk đó đang không sử dụng
 
 # Use after free
 
