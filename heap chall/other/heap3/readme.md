@@ -28,7 +28,7 @@ unlink_chunk (mstate av, mchunkptr p)
 - Kĩ thuật này có thể sử dụng khi ta có lỗi ow heap hoặc có một con trỏ tuỳ chỉnh.
 ## Unsafe unlink flow
 - Tạo 2 chunk A, B, tạo một fake chunk trong A
-![image](https://hackmd.io/_uploads/HJIrEjeP3.png)
+![image](https://github.com/wan-hyhty/trainning/assets/111769169/de7dc545-e2d3-4071-a2ef-54314e50e823)
 
 # Heap 4
 ## Source code
@@ -216,7 +216,7 @@ create("/bin/sh", str(0x80), "a"*0x80)
 ```
     
 ## Kết quả
-![](https://hackmd.io/_uploads/SyBNJ3gDh.png)
+![image](https://github.com/wan-hyhty/trainning/assets/111769169/140d8e61-7dc5-465c-987a-949998024f22)
 ```python=
 #!/usr/bin/python3
 
