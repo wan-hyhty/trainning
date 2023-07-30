@@ -3,6 +3,9 @@
 - [company](https://github.com/wan-hyhty/CTFs_competition/tree/main/crewctf/company)
 - [warmup](https://github.com/wan-hyhty/CTFs_competition/tree/main/crewctf/warmup)
 
+## IMAGINARY 2023
+- [mailman](https://github.com/wan-hyhty/CTFs_competition/tree/main/ImaginaryCTF2023/mailman)
+
 ## cybersecurityrumble
 - [classy](https://github.com/wan-hyhty/CTFs_competition/tree/main/cybersecurityrumble/pwn/classy/csr-2023)
 - [logbook](https://github.com/wan-hyhty/CTFs_competition/tree/main/cybersecurityrumble/pwn/logbook/logbook/csr-2023)
