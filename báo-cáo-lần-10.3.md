@@ -1,1 +1,14 @@
-![image](https://github.com/wan-hyhty/trainning/assets/111769169/77481604-18ce-4a8e-b04e-aa27acdb825e)
+# buuctf
+
+![Alt text](bin/image.png)
+
+# pwnable.xyz
+
+![Alt text](bin/image-1.png)
+
+# Hackthebox
+
+![Alt text](bin/image-2.png)
+
+# SunShineCTF
+![Alt text](bin/image-3.png)
