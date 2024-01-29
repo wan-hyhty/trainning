@@ -20,4 +20,3 @@
 
 ## tetctf
 
-- 2 câu crypto/pwn with a Quốc
